@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
-import 'signup_view.dart'; // Import SignupView
+import 'signup_view.dart';
 
-class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+class SignupView extends StatefulWidget {
+  const SignupView({super.key});
 
   @override
-  State<LoginView> createState() => _LoginViewState();
+  State<SignupView> createState() => _SignupViewState();
 }
 
-class _LoginViewState extends State<LoginView> {
+class _SignupViewState extends State<SignupView> {
   final _formKey = GlobalKey<FormState>();
   String _email = '';
   String _password = '';
+  String _name = '';
   bool _obscure = true;
-  bool _isLoading = false; // Loading state
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +23,8 @@ class _LoginViewState extends State<LoginView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('เข้าสู่ระบบ',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF543310), // เปลี่ยนสี AppBarเป็น #543310
+        title: const Text('สมัครสมาชิก', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF543310),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -35,7 +34,18 @@ class _LoginViewState extends State<LoginView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Email Field
+                // Name Field
+                TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: 'ชื่อ',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'กรุณากรอกชื่อ' : null,
+                  onSaved: (value) => _name = value!.trim(),
+                ),
+                const SizedBox(height: 16),
+                // Email Field (เหมือน login_view)
                 TextFormField(
                   decoration: const InputDecoration(
                     labelText: 'อีเมล',
@@ -51,7 +61,7 @@ class _LoginViewState extends State<LoginView> {
                   onSaved: (value) => _email = value!.trim(),
                 ),
                 const SizedBox(height: 16),
-                // Password Field
+                // Password Field (เหมือน login_view)
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'รหัสผ่าน',
@@ -76,40 +86,29 @@ class _LoginViewState extends State<LoginView> {
                   onSaved: (value) => _password = value!.trim(),
                 ),
                 const SizedBox(height: 24),
-                // Login Button
+                // Signup Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : () async {
+                    onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        setState(() => _isLoading = true);
                         _formKey.currentState!.save();
-                        authController.login(_email, _password);
-                        setState(() => _isLoading = false);
+                        // TODO: เชื่อมต่อกับ AuthController สำหรับสมัครสมาชิกจริง
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(authController.isLoggedIn
-                                ? 'Login Success'
-                                : 'Login Failed'),
-                          ),
+                          const SnackBar(content: Text('สมัครสมาชิกสำเร็จ (Demo)')),
                         );
                       }
                     },
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('เข้าสู่ระบบ'),
+                    child: const Text('สมัครสมาชิก'),
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Signup Button
+                // Login Button
                 TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SignupView()),
-                    );
+                    Navigator.pop(context); // กลับไปหน้า Login
                   },
-                  child: const Text('ยังไม่มีบัญชี? สมัครสมาชิก'),
+                  child: const Text('มีบัญชีแล้ว? เข้าสู่ระบบ'),
                 ),
               ],
             ),

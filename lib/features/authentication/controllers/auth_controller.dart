@@ -2,18 +2,40 @@
 // EN: Controller for authentication logic
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthController with ChangeNotifier {
-  bool _isLoggedIn = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  bool _isLoggedIn = false;
   bool get isLoggedIn => _isLoggedIn;
 
-  void login(String email, String password) {
-    _isLoggedIn = true;
-    notifyListeners();
+  // Login
+  Future<String?> login(String email, String password) async {
+    try {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      _isLoggedIn = true;
+      notifyListeners();
+      return null; // success
+    } on FirebaseAuthException catch (e) {
+      return e.message; // error message
+    }
   }
 
-  void logout() {
+  // Signup
+  Future<String?> signup(String email, String password) async {
+    try {
+      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      _isLoggedIn = true;
+      notifyListeners();
+      return null; // success
+    } on FirebaseAuthException catch (e) {
+      return e.message; // error message
+    }
+  }
+
+  void logout() async {
+    await _auth.signOut();
     _isLoggedIn = false;
     notifyListeners();
   }

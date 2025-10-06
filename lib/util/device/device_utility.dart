@@ -9,7 +9,7 @@ class TDevicesUtils {
   }
 
   static Future<void> setStatusBarColor(Color color) async {
-    SystemChrome.setSystemUIOverlayStyle(
+    SystemChrome.setSystemUIOverlayStyle( 
       SystemUiOverlayStyle(statusBarColor: color),
     );
   }

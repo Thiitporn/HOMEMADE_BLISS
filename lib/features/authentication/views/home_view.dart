@@ -14,17 +14,17 @@ final List<Map<String, String>> categories = [
 final List<Map<String, String>> products = [
   {
     'name': 'Cheese Cupcake',
-    'image': 'images/cupcake1.png',
+    'image': 'assets/images/cupcake1.png', // เปลี่ยน path ให้ตรงกับ pubspec.yaml
     'price': '20.0',
   },
   {
     'name': 'Strawberry Tart',
-    'image': 'images/strawberry_tart.png',
+    'image': 'assets/images/strawberry_tart.png',
     'price': '35.0',
   },
   {
     'name': 'Chocolate Cookie',
-    'image': 'images/choco_cookie.png',
+    'image': 'assets/images/choco_cookie.png',
     'price': '15.0',
   },
   // ...add more real product images as needed
@@ -83,7 +83,7 @@ class _HomeViewState extends State<HomeView> {
               child: Stack(
                 children: [
                   Image.asset(
-                    'images/landing1.png',
+                    'assets/images/landing1.png', // เปลี่ยน path ให้ตรงกับ pubspec.yaml
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,

@@ -22,6 +22,8 @@ class _SignupViewState extends State<SignupView> {
   bool _obscureConfirm = true;
   bool _isLoading = false;
   bool _acceptPolicy = false;
+  // Fixed role for public signup
+  String _role = 'customer';
 
   @override
   void dispose() {
@@ -49,17 +51,22 @@ class _SignupViewState extends State<SignupView> {
         email: email,
         password: password,
       );
+      // uid คือ
+      final uid = cred.user!.uid;
       // บันทึกข้อมูลผู้ใช้ลง Firestore
-      await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
+      final data = <String, dynamic>{
         'username': username,
         'email': email,
         'role': role, // owner หรือ customer
         'phone': phone,
-        'address': address,
-        'shopName': shopName,
-        'uid': cred.user!.uid,
+        'uid': uid,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+      if (role == 'owner') {
+        data['address'] = address;
+        data['shopName'] = shopName;
+      }
+      await FirebaseFirestore.instance.collection('users').doc(uid).set(data);
       return null;
     } on FirebaseAuthException catch (e) {
       return e.message ?? 'Signup failed';
@@ -155,6 +162,7 @@ class _SignupViewState extends State<SignupView> {
                 'Please enter your details', // เปลี่ยน subtitle
                 style: TextStyle(fontSize: 13, color: darkBrown.withOpacity(0.7)),
               ),
+              // Account type: force Customer for public signup. Owner accounts should be provisioned by admin.
               const SizedBox(height: 18),
               // Username
               _InputField(
@@ -185,51 +193,41 @@ class _SignupViewState extends State<SignupView> {
                 dense: true,
               ),
               const SizedBox(height: 10),
-              // Phone
-              _InputField(
-                controller: _phoneCtrl,
-                label: 'Phone',
-                hint: 'Phone number',
-                brown: darkBrown,
-                borderColor: borderColor,
-                fillColor: Colors.white,
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter your phone number';
-                  return null;
-                },
-                dense: true,
-              ),
-              const SizedBox(height: 10),
-              // Address
-              _InputField(
-                controller: _addressCtrl,
-                label: 'Address',
-                hint: 'Shop address',
-                brown: darkBrown,
-                borderColor: borderColor,
-                fillColor: Colors.white,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter your address';
-                  return null;
-                },
-                dense: true,
-              ),
-              const SizedBox(height: 10),
-              // Shop Name
-              _InputField(
-                controller: _shopNameCtrl,
-                label: 'Shop Name',
-                hint: 'Shop name',
-                brown: darkBrown,
-                borderColor: borderColor,
-                fillColor: Colors.white,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter your shop name';
-                  return null;
-                },
-                dense: true,
-              ),
+              // Owner only fields
+              if (_role == 'owner') ...[
+                _InputField(
+                  controller: _addressCtrl,
+                  label: 'Shop Address',
+                  hint: 'Shop address',
+                  brown: darkBrown,
+                  borderColor: borderColor,
+                  fillColor: Colors.white,
+                  validator: (value) {
+                    if (_role == 'owner' && (value == null || value.isEmpty)) {
+                      return 'Please enter your shop address';
+                    }
+                    return null;
+                  },
+                  dense: true,
+                ),
+                const SizedBox(height: 10),
+                _InputField(
+                  controller: _shopNameCtrl,
+                  label: 'Shop Name',
+                  hint: 'Shop name',
+                  brown: darkBrown,
+                  borderColor: borderColor,
+                  fillColor: Colors.white,
+                  validator: (value) {
+                    if (_role == 'owner' && (value == null || value.isEmpty)) {
+                      return 'Please enter your shop name';
+                    }
+                    return null;
+                  },
+                  dense: true,
+                ),
+                const SizedBox(height: 10),
+              ],
               const SizedBox(height: 10),
               // Password
               _InputField(
@@ -363,7 +361,7 @@ class _SignupViewState extends State<SignupView> {
                           setState(() => _isLoading = true);
                           String? error;
                           try {
-                            final role = 'owner'; // เปลี่ยนเป็น 'owner' สำหรับเจ้าของร้าน
+                            final role = _role; // ใช้ role จากตัวเลือก
                             error = await _signup(
                               _emailCtrl.text.trim(),
                               _pwdCtrl.text.trim(),

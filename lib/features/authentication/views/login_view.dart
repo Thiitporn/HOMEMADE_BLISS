@@ -36,7 +36,8 @@ class _LoginViewState extends State<LoginView> {
         case 'user-not-found':
           return 'No user found for this email.';
         case 'wrong-password':
-          return 'Incorrect password. Please try again.';
+        case 'invalid-credential': // Firebase 11+ ใช้โค้ดนี้เมื่ออีเมล/รหัสผ่านไม่ถูกต้อง
+          return 'Incorrect email or password. Please try again.';
         case 'invalid-email':
           return 'Invalid email address.';
         case 'user-disabled':
@@ -160,7 +161,7 @@ class _LoginViewState extends State<LoginView> {
     // ใช้โทนสีเดียวกับ signup
     final Color darkBrown = const Color(0xFF4E342E);
     final Color mediumBrown = const Color(0xFF8D6E63);
-    final Color lightBrown = const Color(0xFFD7CCC8);
+  // final Color lightBrown = const Color(0xFFD7CCC8); // not used here
     final Color cream = const Color(0xFFFAF3EF);
     final Color borderColor = const Color(0xFFE0CFC2);
     final Color buttonTextColor = Colors.white;

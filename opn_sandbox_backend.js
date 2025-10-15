@@ -1,18 +1,18 @@
 const axios = require('axios');
 const express = require('express');
 
-const Omise = require('omise')({
-  publicKey: 'pkey_test_65d9tv46ybfuu4dvand',
-  secretKey: 'skey_test_65d9tv4kdphsp77mgyz'
-});
+// const Omise = require('omise')({
+//   publicKey: process.env.OMISE_PUBLIC_KEY,
+//   secretKey: process.env.OMISE_SECRET_KEY
+// });
 
 const app = express();
 app.use(express.json());
 
 // Stripe setup
 const Stripe = require('stripe');
-const STRIPE_SECRET_KEY = 'STRIPE_SECRET_KEY_REMOVED';
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_51SI8SqH0YKCnZGn55sDwlKMz1XWL9zxKUQA30Pqg5gz218neg5hm0JQWCN8xPQ7AxXjNVPp81TQCtf0JvFaoIaEQ00wWp8DEP2';
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY;
 const stripe = Stripe(STRIPE_SECRET_KEY);
 
 // Expose publishable key for the client to use (test only; do not expose secret key)

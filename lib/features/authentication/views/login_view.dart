@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_view.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -277,6 +278,20 @@ class _LoginViewState extends State<LoginView> {
                           if (!mounted) return;
 
                           if (error == null) {
+                            // หลัง login สำเร็จ: สร้าง users/<uid> อัตโนมัติถ้ายังไม่มี
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user != null) {
+                              final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+                              if (!doc.exists) {
+                                await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+                                  'role': 'customer',
+                                  'email': user.email,
+                                  'phone': '',
+                                  'displayName': user.displayName ?? '',
+                                  'createdAt': FieldValue.serverTimestamp(),
+                                });
+                              }
+                            }
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Login successful')),
                             );

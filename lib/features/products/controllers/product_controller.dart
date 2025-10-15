@@ -4,6 +4,17 @@ import '../models/product_model.dart';
 
 /// ตัวจัดการสินค้า (ProductController)
 class ProductController extends ChangeNotifier {
+  /// ลด stock สินค้าแบบ static (เรียกใช้จากที่ไหนก็ได้)
+  static Future<void> decrementStock(String productId, int qty) async {
+    final db = FirebaseFirestore.instance;
+    final docRef = db.collection('products').doc(productId);
+    await db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      final currentStock = (snapshot.data()?['stock'] ?? 0) as int;
+      final newStock = currentStock - qty;
+      transaction.update(docRef, {'stock': newStock < 0 ? 0 : newStock});
+    });
+  }
   final _db = FirebaseFirestore.instance;
 
   final List<Product> _products = [

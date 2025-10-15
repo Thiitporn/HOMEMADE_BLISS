@@ -2,19 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'edit_profile_view.dart';
 import '../../cart/cart_controller.dart';
+import '../../orders/views/checkout_view.dart';
+import '../../orders/views/order_history_view.dart';
 
-// Mock data
-final List<Map<String, String>> categories = [
-  {'name': 'Cupcake'},
-  {'name': 'Dessert'},
-  {'name': 'Bread'},
-  {'name': 'Drink'},
-  {'name': 'Cake'},
-  {'name': 'Cookie'},
-];
 
-// Deprecated mock products; now loading from Firestore 'products' collection.
+// หมวดหมู่จะดึงจาก Firestore จริง (distinct category/categoryTh)
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -24,8 +18,24 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
+
+  // ฟังก์ชันเปรียบเทียบ list ของ map (ต้องอยู่บนสุดของคลาส)
+
+
+  // ฟังก์ชันเปรียบเทียบ list ของ map (ต้องอยู่บนสุดของคลาส)
+  bool _listEquals(List<Map<String, String>> a, List<Map<String, String>> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if ((a[i]['en'] ?? '') != (b[i]['en'] ?? '') || (a[i]['th'] ?? '') != (b[i]['th'] ?? '')) return false;
+    }
+    return true;
+  }
+
   int selectedCategory = 0;
+  List<Map<String, String>> categories = [];
   int selectedNav = 0; // 0: Home, 1: Categories, 2: Orders, 3: Profile
+  String searchQuery = '';
+  final TextEditingController searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +46,45 @@ class _HomeViewState extends State<HomeView> {
 
     final cart = context.watch<CartController>();
 
+
+  // ฟังก์ชันเปรียบเทียบ list ของ map (เป็น method ของคลาส)
+  bool _listEquals(List<Map<String, String>> a, List<Map<String, String>> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i]['en'] != b[i]['en'] || a[i]['th'] != b[i]['th']) return false;
+    }
+    return true;
+  }
+
     Widget buildHomeTab() {
-      return ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 0),
-        children: [
+      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('products').snapshots(),
+        builder: (context, snapshot) {
+          final docs = snapshot.data?.docs ?? [];
+          // รวมหมวดหมู่ที่ชื่ออังกฤษซ้ำกันให้เหลือหมวดเดียว (ใช้ en เป็น key หลัก)
+          final Map<String, Map<String, String>> uniqueCats = {};
+          for (final doc in docs) {
+            final data = doc.data();
+            final en = (data['category'] ?? '').toString().trim();
+            final th = (data['categoryTh'] ?? '').toString().trim();
+            if (en.isEmpty) continue;
+            final key = en.toLowerCase();
+            if (!uniqueCats.containsKey(key)) {
+              uniqueCats[key] = {'en': en, 'th': th};
+            }
+          }
+          // เพิ่มหมวดหมู่ All ไว้หน้าสุด
+          final catList = [
+            {'en': 'All', 'th': 'ทั้งหมด'}
+          ] + uniqueCats.values.toList();
+          if (categories.length != catList.length || !_listEquals(categories, catList)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              setState(() => categories = catList);
+            });
+          }
+          return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 0),
+            children: [
           // Banner (Promotion)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -131,12 +176,18 @@ class _HomeViewState extends State<HomeView> {
                       border: Border.all(color: lightBrown, width: 1),
                     ),
                     child: TextField(
+                      controller: searchController,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.search, color: mediumBrown),
                         hintText: 'Search Product',
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
                       ),
+                      onChanged: (value) {
+                        setState(() {
+                          searchQuery = value.trim();
+                        });
+                      },
                     ),
                   ),
                 ),
@@ -146,68 +197,73 @@ class _HomeViewState extends State<HomeView> {
           ),
           const SizedBox(height: 16),
           // Categories
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Categories',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: darkBrown,
+          if (categories.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Categories',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: darkBrown,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: List.generate(categories.length, (i) {
-                final selected = selectedCategory == i;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(categories[i]['name']!),
-                    selected: selected,
-                    onSelected: (_) => setState(() => selectedCategory = i),
-                    selectedColor: mediumBrown,
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : darkBrown,
-                      fontWeight: FontWeight.bold,
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: List.generate(categories.length, (i) {
+                  final selected = selectedCategory == i;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text('${categories[i]['th']} (${categories[i]['en']})'),
+                      selected: selected,
+                      onSelected: (_) => setState(() => selectedCategory = i),
+                      selectedColor: mediumBrown,
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selected ? Colors.white : darkBrown,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 18),
           // Products Grid (from Firestore)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('products')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Builder(
+              builder: (context) {
+                // ฟิลเตอร์ตาม searchQuery และหมวดหมู่
+                final selectedCat = categories.isNotEmpty && selectedCategory < categories.length
+                    ? categories[selectedCategory]
+                    : null;
+                final filteredDocs = docs.where((doc) {
+                  final data = doc.data();
+                  final name = (data['name'] ?? '') as String;
+                  final category = (data['category'] ?? '') as String;
+                  final matchesSearch = searchQuery.isEmpty || name.toLowerCase().contains(searchQuery.toLowerCase());
+                  final matchesCategory = selectedCat == null
+                      || (selectedCat['en']?.toLowerCase() == 'all')
+                      || category.toLowerCase() == (selectedCat['en'] ?? '').toLowerCase();
+                  return matchesSearch && matchesCategory;
+                }).toList();
+                if (filteredDocs.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                final docs = snapshot.data?.docs ?? [];
-                if (docs.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: Text('No products yet')),
+                    child: Center(child: Text('No products found')),
                   );
                 }
                 return GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: docs.length,
+                  itemCount: filteredDocs.length,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     childAspectRatio: 0.70,
@@ -215,7 +271,7 @@ class _HomeViewState extends State<HomeView> {
                     mainAxisSpacing: 12,
                   ),
                   itemBuilder: (context, i) {
-                    final data = docs[i].data();
+                    final data = filteredDocs[i].data();
                     final name = (data['name'] ?? '') as String;
                     final price = (data['price'] ?? 0).toDouble();
                     final imageUrl = (data['imageUrl'] ?? '') as String;
@@ -295,12 +351,12 @@ class _HomeViewState extends State<HomeView> {
                                   ),
                                   onPressed: () {
                                     cart.addItem(
-                                      id: docs[i].id,
+                                      id: filteredDocs[i].id,
                                       name: name,
                                       price: price,
                                       imageAsset: imageUrl.startsWith('http') ? null : imageUrl,
                                     );
-                                    setState(() => selectedNav = 2);
+                                    setState(() => selectedNav = 1);
                                   },
                                   child: const Text('Add to Cart', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                 ),
@@ -317,13 +373,18 @@ class _HomeViewState extends State<HomeView> {
           const SizedBox(height: 18),
         ],
       );
+    },
+  );
+
+  // ฟังก์ชันเปรียบเทียบ list ของ map
     }
 
-    Widget buildCategoriesTab() {
-      return Center(
-        child: Text('Categories listing coming soon', style: TextStyle(color: darkBrown, fontWeight: FontWeight.bold)),
-      );
-    }
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
 
     Widget buildOrdersTab() {
       if (cart.items.isEmpty) {
@@ -347,9 +408,21 @@ class _HomeViewState extends State<HomeView> {
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8D6E63), foregroundColor: Colors.white),
                     onPressed: () {
-                      // TODO: create order flow
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order placed (demo)')));
-                      cart.clear();
+                      // ไปหน้า checkout
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => CheckoutView(
+                            totalPrice: cart.totalPrice,
+                            items: cart.items.map((e) => {
+                              'id': e.id,
+                              'name': e.name,
+                              'price': e.price,
+                              'quantity': e.quantity,
+                              'imageAsset': e.imageAsset,
+                            }).toList(),
+                          ),
+                        ),
+                      );
                     },
                     child: const Text('Place Order'),
                   ),
@@ -395,6 +468,24 @@ class _HomeViewState extends State<HomeView> {
             ),
           ),
           const Divider(),
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text('ประวัติคำสั่งซื้อ'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const OrderHistoryView()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('แก้ไขโปรไฟล์'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const EditProfileView()),
+              );
+            },
+          ),
           const ListTile(leading: Icon(Icons.location_on_outlined), title: Text('Delivery Address')),
           const ListTile(leading: Icon(Icons.payment_outlined), title: Text('Payment Methods')),
           const ListTile(leading: Icon(Icons.settings_outlined), title: Text('Settings')),
@@ -404,7 +495,6 @@ class _HomeViewState extends State<HomeView> {
 
     final pages = [
       buildHomeTab(),
-      buildCategoriesTab(),
       buildOrdersTab(),
       buildProfileTab(),
     ];
@@ -443,7 +533,6 @@ class _HomeViewState extends State<HomeView> {
         type: BottomNavigationBarType.fixed,
         items: [
           const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          const BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
           BottomNavigationBarItem(
             icon: Stack(
               children: [

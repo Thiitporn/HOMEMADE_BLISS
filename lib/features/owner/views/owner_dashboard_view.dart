@@ -1,127 +1,290 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../../common/in_app_notification.dart';
+import '../../chat/chat_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'orders_management_view.dart';
+import 'coupons_management_view.dart';
+import '../../authentication/views/edit_profile_view.dart';
 
 class OwnerDashboardView extends StatefulWidget {
-  const OwnerDashboardView({super.key});
+  const OwnerDashboardView({Key? key}) : super(key: key);
 
   @override
   State<OwnerDashboardView> createState() => _OwnerDashboardViewState();
 }
 
 class _OwnerDashboardViewState extends State<OwnerDashboardView> {
-  int _tabIndex = 0;
-
-  Future<void> _showAddProductSheet(BuildContext context) async {
-    final nameCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-    final imageCtrl = TextEditingController();
-    final stockCtrl = TextEditingController(text: '0');
-    final formKey = GlobalKey<FormState>();
-    await showModalBottomSheet(
+  void _showAddProductSheet(BuildContext context) {
+    final _formKey = GlobalKey<FormState>();
+    String name = '';
+  final List<String> categories = [
+    'Cakes',
+    'Breads',
+    'Tarts',
+    'Cookies',
+  ];
+  String? selectedCategory = categories.isNotEmpty ? categories[0] : null;
+    String description = '';
+  String imageUrl = '';
+    final List<Map<String, dynamic>> variants = [
+      {'name': '', 'price': '', 'stock': ''},
+    ];
+    showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) {
-        return Padding(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16, right: 16, top: 24),
           child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Add Product', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter product name' : null,
-                ),
-                TextFormField(
-                  controller: priceCtrl,
-                  decoration: const InputDecoration(labelText: 'Price (THB)'),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => (double.tryParse(v ?? '') == null) ? 'Enter valid price' : null,
-                ),
-                TextFormField(
-                  controller: imageCtrl,
-                  decoration: const InputDecoration(labelText: 'Image URL or Asset path'),
-                ),
-                TextFormField(
-                  controller: stockCtrl,
-                  decoration: const InputDecoration(labelText: 'Stock'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => (int.tryParse(v ?? '') == null) ? 'Enter valid stock' : null,
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.save),
-                    label: const Text('Save'),
-                    onPressed: () async {
-                      if (!formKey.currentState!.validate()) return;
-                      await FirebaseFirestore.instance.collection('products').add({
-                        'name': nameCtrl.text.trim(),
-                        'price': double.parse(priceCtrl.text.trim()),
-                        'imageUrl': imageCtrl.text.trim(),
-                        'stock': int.parse(stockCtrl.text.trim()),
-                        'description': '',
-                        'variants': [],
-                        'createdAt': FieldValue.serverTimestamp(),
-                      });
-                      if (mounted) Navigator.of(ctx).pop();
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('เพิ่มสินค้าใหม่', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'URL รูปสินค้า (https://...)',
+                      prefixIcon: Icon(Icons.image),
+                    ),
+                    validator: (v) => v == null || v.isEmpty ? 'กรุณาใส่ URL รูปสินค้า' : null,
+                    onSaved: (v) => imageUrl = v ?? '',
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'ชื่อสินค้า'),
+                    validator: (v) => v == null || v.isEmpty ? 'กรุณากรอกชื่อสินค้า' : null,
+                    onSaved: (v) => name = v ?? '',
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedCategory,
+                          decoration: const InputDecoration(labelText: 'Category'),
+                          items: categories
+                              .map((cat) => DropdownMenuItem(
+                                    value: cat,
+                                    child: Text(cat),
+                                  ))
+                              .toList(),
+                          onChanged: (v) => setModalState(() => selectedCategory = v),
+                          validator: (v) => v == null ? 'Select category' : null,
+                          onSaved: (v) => selectedCategory = v,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        tooltip: 'เพิ่มหมวดหมู่ใหม่',
+                        onPressed: () async {
+                          final controller = TextEditingController();
+                          final result = await showDialog<String>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('เพิ่มหมวดหมู่ใหม่'),
+                              content: TextField(
+                                controller: controller,
+                                autofocus: true,
+                                decoration: const InputDecoration(hintText: 'ชื่อหมวดหมู่'),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('ยกเลิก'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    final text = controller.text.trim();
+                                    if (text.isNotEmpty && !categories.contains(text)) {
+                                      Navigator.pop(context, text);
+                                    }
+                                  },
+                                  child: const Text('เพิ่ม'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (result != null && result.isNotEmpty) {
+                            final exists = categories.any((cat) => cat.toLowerCase() == result.toLowerCase());
+                            if (!exists) {
+                              setModalState(() {
+                                categories.add(result);
+                                selectedCategory = result;
+                              });
+                            } else {
+                              final idx = categories.indexWhere((cat) => cat.toLowerCase() == result.toLowerCase());
+                              if (idx != -1) {
+                                setModalState(() {
+                                  selectedCategory = categories[idx];
+                                });
+                              }
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'รายละเอียด'),
+                    maxLines: 2,
+                    onSaved: (v) => description = v ?? '',
+                  ),
+                  const SizedBox(height: 20),
+                  Text('ตัวเลือกสินค้า', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: variants.length,
+                    itemBuilder: (context, i) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: TextFormField(
+                                  decoration: const InputDecoration(labelText: 'ชื่อตัวเลือก'),
+                                  initialValue: variants[i]['name'],
+                                  validator: (v) => v == null || v.isEmpty ? 'กรอกชื่อตัวเลือก' : null,
+                                  onChanged: (v) => setModalState(() => variants[i]['name'] = v),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 1,
+                                child: TextFormField(
+                                  decoration: const InputDecoration(labelText: 'ราคา'),
+                                  initialValue: variants[i]['price'],
+                                  keyboardType: TextInputType.number,
+                                  validator: (v) => v == null || v.isEmpty ? 'กรอกราคา' : null,
+                                  onChanged: (v) => setModalState(() => variants[i]['price'] = v),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 1,
+                                child: TextFormField(
+                                  decoration: const InputDecoration(labelText: 'สต็อก'),
+                                  initialValue: variants[i]['stock'],
+                                  keyboardType: TextInputType.number,
+                                  validator: (v) => v == null || v.isEmpty ? 'กรอกสต็อก' : null,
+                                  onChanged: (v) => setModalState(() => variants[i]['stock'] = v),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: variants.length > 1
+                                    ? () => setModalState(() => variants.removeAt(i))
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     },
                   ),
-                ),
-              ],
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('เพิ่มตัวเลือก'),
+                      onPressed: () => setModalState(() => variants.add({'name': '', 'price': '', 'stock': ''})),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('ยกเลิก'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            _formKey.currentState?.save();
+                            // เตรียมข้อมูลตัวเลือก
+                            final List<Map<String, dynamic>> variantList = variants
+                                .where((v) => v['name'].toString().trim().isNotEmpty)
+                                .map((v) => {
+                                      'name': v['name'],
+                                      'price': double.tryParse(v['price'].toString()) ?? 0,
+                                      'stock': int.tryParse(v['stock'].toString()) ?? 0,
+                                    })
+                                .toList();
+                            // คำนวณราคาต่ำสุดและรวม stock
+                            double minPrice = variantList.isNotEmpty
+                                ? variantList.map((v) => v['price'] as double).reduce((a, b) => a < b ? a : b)
+                                : 0;
+                            int totalStock = variantList.fold(0, (sum, v) => sum + (v['stock'] as int));
+                            // บันทึกลง Firestore
+                            await FirebaseFirestore.instance.collection('products').add({
+                              'name': name,
+                              'category': selectedCategory ?? '',
+                              'description': description,
+                              'imageUrl': imageUrl,
+                              'variants': variantList,
+                              'basePrice': minPrice,
+                              'totalStock': totalStock,
+                              'price': minPrice, // For customer view compatibility
+                              'stock': totalStock, // For customer view compatibility
+                              'createdAt': FieldValue.serverTimestamp(),
+                              'isActive': true, // เพิ่ม field นี้
+                            });
+                            Navigator.pop(context);
+                            InAppNotification.show(context, 'เพิ่มสินค้า "$name" เรียบร้อย', color: Colors.green);
+                          }
+                        },
+                        child: const Text('บันทึก'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
+  int _tabIndex = 0;
+
+  final Color darkBrown = const Color(0xFF4E342E);
+  final Color mediumBrown = const Color(0xFF8D6E63);
+  final List<Widget> pages = const [
+    OwnerDashboardTab(),
+    OwnerProductsTab(),
+    OwnerOrdersTab(),
+    OwnerMessagesTab(),
+    OwnerProfileTab(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final Color darkBrown = const Color(0xFF4E342E);
-    final Color mediumBrown = const Color(0xFF8D6E63);
-    final Color cream = const Color(0xFFFAF3EF);
-
-    final pages = <Widget>[
-      const _OwnerDashboardTab(),
-      const _OwnerProductsTab(),
-      const _OwnerOrdersTab(),
-      const _OwnerMessagesTab(),
-      const _OwnerProfileTab(),
-    ];
-
     return Scaffold(
-      backgroundColor: cream,
+      backgroundColor: const Color(0xFFFAF3EF),
       appBar: AppBar(
-        backgroundColor: cream,
+        backgroundColor: const Color(0xFFFAF3EF),
         elevation: 0,
         title: Text(
           'Owner Dashboard',
           style: TextStyle(color: darkBrown, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            color: darkBrown,
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-            },
-          ),
-        ],
       ),
       body: pages[_tabIndex],
       floatingActionButton: _tabIndex == 1
@@ -151,30 +314,195 @@ class _OwnerDashboardViewState extends State<OwnerDashboardView> {
     );
   }
 }
-
-
-// --- Owner Tabs ---
-class _OwnerDashboardTab extends StatelessWidget {
-  const _OwnerDashboardTab();
+class OwnerDashboardTab extends StatelessWidget {
+  const OwnerDashboardTab();
   @override
   Widget build(BuildContext context) {
-    // TODO: Replace with real dashboard widgets (stats, charts, quick links)
-    return Center(
+  final Color darkBrown = const Color(0xFF4E342E);
+  final Color mediumBrown = const Color(0xFF8D6E63);
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.bar_chart, size: 60, color: Color(0xFF4E342E)),
-          SizedBox(height: 16),
-          Text('Dashboard: Sales summary, analytics, quick links',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Quick Stats
+          Row(
+            children: [
+              Expanded(child: _buildStatCard('สินค้าทั้งหมด', 'products', Icons.inventory_2, mediumBrown)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildStatCard('คำสั่งซื้อวันนี้', 'orders_today', Icons.shopping_cart, Colors.blue)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildStatCard('คูปองส่วนลด', 'coupons', Icons.discount, Colors.purple)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildStatCard('รายได้วันนี้', 'revenue_today', Icons.monetization_on, Colors.green)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          // Quick Actions
+          Text('การจัดการด่วน', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkBrown)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickActionCard(
+                  'จัดการคำสั่งซื้อ',
+                  Icons.local_shipping,
+                  mediumBrown,
+                  () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrdersManagementView())),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuickActionCard(
+                  'จัดการคูปอง',
+                  Icons.discount,
+                  Colors.purple,
+                  () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CouponsManagementView())),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickActionCard(
+                  'รายงานยอดขาย',
+                  Icons.bar_chart,
+                  Colors.blue,
+                  () {
+                    // TODO: Navigate to sales report
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuickActionCard(
+                  'จัดการสต็อก',
+                  Icons.inventory,
+                  Colors.orange,
+                  () {
+                    // Navigate to products tab (stock management)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('ไปที่แท็บ Products เพื่อจัดการสต็อก')),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+  
+  Widget _buildStatCard(String title, String type, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD7CCC8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const Spacer(),
+              StreamBuilder<QuerySnapshot>(
+                stream: _getStatStream(type),
+                builder: (context, snapshot) {
+                  if (type == 'revenue_today') {
+                    final docs = snapshot.data?.docs ?? [];
+                    double revenue = 0;
+                    for (final doc in docs) {
+                      final data = doc.data() as Map<String, dynamic>?;
+                      if (data != null && data['totalPrice'] != null) {
+                        final val = data['totalPrice'];
+                        if (val is int) revenue += val.toDouble();
+                        else if (val is double) revenue += val;
+                        else if (val is String) revenue += double.tryParse(val) ?? 0;
+                      }
+                    }
+                    return Text(
+                      revenue.toStringAsFixed(0),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
+                    );
+                  } else {
+                    final count = snapshot.data?.docs.length ?? 0;
+                    return Text(
+                      '$count',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildQuickActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Stream<QuerySnapshot> _getStatStream(String type) {
+    switch (type) {
+      case 'products':
+        return FirebaseFirestore.instance.collection('products').snapshots();
+      case 'orders_today':
+        final today = DateTime.now();
+        final startOfDay = DateTime(today.year, today.month, today.day);
+        return FirebaseFirestore.instance
+            .collection('orders')
+            .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+            .snapshots();
+      case 'coupons':
+        return FirebaseFirestore.instance
+            .collection('coupons')
+            .where('isActive', isEqualTo: true)
+            .snapshots();
+      default:
+        return FirebaseFirestore.instance.collection('products').snapshots();
+    }
+  }
 }
 
-class _OwnerProductsTab extends StatelessWidget {
-  const _OwnerProductsTab();
+class OwnerProductsTab extends StatelessWidget {
+  const OwnerProductsTab();
   @override
   Widget build(BuildContext context) {
     final Color darkBrown = const Color(0xFF4E342E);
@@ -198,9 +526,19 @@ class _OwnerProductsTab extends StatelessWidget {
             final doc = docs[i];
             final data = doc.data();
             final name = (data['name'] ?? '') as String;
-            final price = (data['price'] ?? 0).toDouble();
-            final stock = (data['stock'] ?? 0) as num;
+            final basePrice = (data['basePrice'] ?? data['price'] ?? 0).toDouble();
+            final totalStock = (data['totalStock'] ?? data['stock'] ?? 0) as num;
             final imageUrl = (data['imageUrl'] ?? '') as String;
+            final category = (data['category'] ?? '') as String;
+            final variants = (data['variants'] ?? []) as List;
+            // Display variant info if available
+            String variantInfo = '';
+            if (variants.isNotEmpty) {
+              final variantNames = variants.map((v) => v['name'] ?? '').where((name) => name.isNotEmpty).join(', ');
+              if (variantNames.isNotEmpty) {
+                variantInfo = ' • $variantNames';
+              }
+            }
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -219,13 +557,258 @@ class _OwnerProductsTab extends StatelessWidget {
                       : const Icon(Icons.image),
                 ),
                 title: Text(name, style: TextStyle(color: darkBrown, fontWeight: FontWeight.bold)),
-                subtitle: Text('฿${price.toStringAsFixed(2)}  •  Stock: $stock'),
+                subtitle: Text('เริ่มต้น ฿${basePrice.toStringAsFixed(2)}  •  สต็อก: $totalStock${category.isNotEmpty ? '  •  $category' : ''}$variantInfo'),
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) async {
                     if (v == 'delete') {
                       await FirebaseFirestore.instance.collection('products').doc(doc.id).delete();
                     } else if (v == 'edit') {
-                      // TODO: implement edit flow
+                      // Show edit bottom sheet with update logic
+                      final _formKey = GlobalKey<FormState>();
+                      String editName = name;
+                      String editImageUrl = imageUrl;
+                      String editDescription = (data['description'] ?? '') as String;
+                      List<String> categories = ['Cakes', 'Breads', 'Tarts', 'Cookies'];
+                      String? editCategory = category.isNotEmpty ? category : (categories.isNotEmpty ? categories[0] : null);
+                      if (editCategory != null && !categories.contains(editCategory)) categories.add(editCategory);
+                      final List<Map<String, dynamic>> editVariants = [
+                        for (final v in variants)
+                          {
+                            'name': v['name'] ?? '',
+                            'price': v['price']?.toString() ?? '',
+                            'stock': v['stock']?.toString() ?? '',
+                          }
+                      ];
+                      await showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                        ),
+                        builder: (context) => StatefulBuilder(
+                          builder: (context, setModalState) => Padding(
+                            padding: EdgeInsets.only(
+                              bottom: MediaQuery.of(context).viewInsets.bottom,
+                              left: 16, right: 16, top: 24),
+                            child: Form(
+                              key: _formKey,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('แก้ไขสินค้า', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      initialValue: editImageUrl,
+                                      decoration: InputDecoration(
+                                        labelText: 'URL รูปสินค้า (https://...)',
+                                        prefixIcon: Icon(Icons.image),
+                                      ),
+                                      validator: (v) => v == null || v.isEmpty ? 'กรุณาใส่ URL รูปสินค้า' : null,
+                                      onSaved: (v) => editImageUrl = v ?? '',
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      initialValue: editName,
+                                      decoration: InputDecoration(labelText: 'ชื่อสินค้า'),
+                                      validator: (v) => v == null || v.isEmpty ? 'กรุณากรอกชื่อสินค้า' : null,
+                                      onSaved: (v) => editName = v ?? '',
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: DropdownButtonFormField<String>(
+                                            value: editCategory,
+                                            decoration: const InputDecoration(labelText: 'Category'),
+                                            items: categories
+                                                .map((cat) => DropdownMenuItem(
+                                                      value: cat,
+                                                      child: Text(cat),
+                                                    ))
+                                                .toList(),
+                                            onChanged: (v) => setModalState(() => editCategory = v),
+                                            validator: (v) => v == null || v.isEmpty ? 'Select category' : null,
+                                            onSaved: (v) => editCategory = v,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.add),
+                                          tooltip: 'เพิ่มหมวดหมู่ใหม่',
+                                          onPressed: () async {
+                                            final controller = TextEditingController();
+                                            final result = await showDialog<String>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text('เพิ่มหมวดหมู่ใหม่'),
+                                                content: TextField(
+                                                  controller: controller,
+                                                  autofocus: true,
+                                                  decoration: const InputDecoration(hintText: 'ชื่อหมวดหมู่'),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(context),
+                                                    child: const Text('ยกเลิก'),
+                                                  ),
+                                                  ElevatedButton(
+                                                    onPressed: () {
+                                                      final text = controller.text.trim();
+                                                      if (text.isNotEmpty && !categories.contains(text)) {
+                                                        Navigator.pop(context, text);
+                                                      }
+                                                    },
+                                                    child: const Text('เพิ่ม'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (result != null && result.isNotEmpty) {
+                                              final exists = categories.any((cat) => cat.toLowerCase() == result.toLowerCase());
+                                              if (!exists) {
+                                                setModalState(() {
+                                                  categories.add(result);
+                                                  editCategory = result;
+                                                });
+                                              } else {
+                                                final idx = categories.indexWhere((cat) => cat.toLowerCase() == result.toLowerCase());
+                                                if (idx != -1) {
+                                                  setModalState(() {
+                                                    editCategory = categories[idx];
+                                                  });
+                                                }
+                                              }
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      initialValue: editDescription,
+                                      decoration: InputDecoration(labelText: 'รายละเอียด'),
+                                      maxLines: 2,
+                                      onSaved: (v) => editDescription = v ?? '',
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Text('ตัวเลือกสินค้า', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 8),
+                                    ListView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: editVariants.length,
+                                      itemBuilder: (context, i) {
+                                        return Card(
+                                          margin: const EdgeInsets.symmetric(vertical: 4),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  flex: 2,
+                                                  child: TextFormField(
+                                                    decoration: const InputDecoration(labelText: 'ชื่อตัวเลือก'),
+                                                    initialValue: editVariants[i]['name'],
+                                                    validator: (v) => v == null || v.isEmpty ? 'กรอกชื่อตัวเลือก' : null,
+                                                    onChanged: (v) => setModalState(() => editVariants[i]['name'] = v),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  flex: 1,
+                                                  child: TextFormField(
+                                                    decoration: const InputDecoration(labelText: 'ราคา'),
+                                                    initialValue: editVariants[i]['price'],
+                                                    keyboardType: TextInputType.number,
+                                                    validator: (v) => v == null || v.isEmpty ? 'กรอกราคา' : null,
+                                                    onChanged: (v) => setModalState(() => editVariants[i]['price'] = v),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  flex: 1,
+                                                  child: TextFormField(
+                                                    decoration: const InputDecoration(labelText: 'สต็อก'),
+                                                    initialValue: editVariants[i]['stock'],
+                                                    keyboardType: TextInputType.number,
+                                                    validator: (v) => v == null || v.isEmpty ? 'กรอกสต็อก' : null,
+                                                    onChanged: (v) => setModalState(() => editVariants[i]['stock'] = v),
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                                  onPressed: editVariants.length > 1
+                                                      ? () => setModalState(() => editVariants.removeAt(i))
+                                                      : null,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton.icon(
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('เพิ่มตัวเลือก'),
+                                        onPressed: () => setModalState(() => editVariants.add({'name': '', 'price': '', 'stock': ''})),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: const Text('ยกเลิก'),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            if (_formKey.currentState?.validate() ?? false) {
+                                              _formKey.currentState?.save();
+                                              final List<Map<String, dynamic>> variantList = editVariants
+                                                  .where((v) => v['name'].toString().trim().isNotEmpty)
+                                                  .map((v) => {
+                                                        'name': v['name'],
+                                                        'price': double.tryParse(v['price'].toString()) ?? 0,
+                                                        'stock': int.tryParse(v['stock'].toString()) ?? 0,
+                                                      })
+                                                  .toList();
+                                              double minPrice = variantList.isNotEmpty
+                                                  ? variantList.map((v) => v['price'] as double).reduce((a, b) => a < b ? a : b)
+                                                  : 0;
+                                              int totalStock = variantList.fold(0, (sum, v) => sum + (v['stock'] as int));
+                                              await FirebaseFirestore.instance.collection('products').doc(doc.id).update({
+                                                'name': editName,
+                                                'category': editCategory ?? '',
+                                                'description': editDescription,
+                                                'imageUrl': editImageUrl,
+                                                'variants': variantList,
+                                                'basePrice': minPrice,
+                                                'totalStock': totalStock,
+                                                'price': minPrice,
+                                                'stock': totalStock,
+                                              });
+                                              Navigator.pop(context);
+                                              // ignore: use_build_context_synchronously
+                                              InAppNotification.show(context, 'แก้ไขสินค้า "$editName" เรียบร้อย', color: Colors.green);
+                                            }
+                                          },
+                                          child: const Text('บันทึก'),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
                     }
                   },
                   itemBuilder: (_) => const [
@@ -244,59 +827,86 @@ class _OwnerProductsTab extends StatelessWidget {
   }
 }
 
-class _OwnerOrdersTab extends StatelessWidget {
-  const _OwnerOrdersTab();
+class OwnerOrdersTab extends StatelessWidget {
+  const OwnerOrdersTab();
   @override
   Widget build(BuildContext context) {
-    // TODO: Replace with real order management UI
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.local_shipping, size: 60, color: Color(0xFF4E342E)),
-          SizedBox(height: 16),
-          Text('Orders: View, update, manage all orders',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
-      ),
+    return const OrdersManagementView();
+  }
+}
+
+class OwnerMessagesTab extends StatelessWidget {
+  const OwnerMessagesTab();
+  @override
+  Widget build(BuildContext context) {
+    final ownerUid = FirebaseAuth.instance.currentUser?.uid;
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('chats')
+          .where('ownerUid', isEqualTo: ownerUid)
+          .orderBy('lastTimestamp', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data!.docs;
+        if (docs.isEmpty) {
+          return const Center(child: Text('ยังไม่มีข้อความจากลูกค้า'));
+        }
+        return ListView.separated(
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, i) {
+            final data = docs[i].data();
+            final chatId = docs[i].id;
+            final customerName = data['customerName'] ?? 'ลูกค้า';
+            final lastMessage = data['lastMessage'] ?? '';
+            return ListTile(
+              leading: const Icon(Icons.person, color: Color(0xFF4E342E)),
+              title: Text(customerName),
+              subtitle: Text(lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => ChatView(chatId: chatId, peerName: customerName),
+                ));
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
 
-class _OwnerMessagesTab extends StatelessWidget {
-  const _OwnerMessagesTab();
+class OwnerProfileTab extends StatelessWidget {
+  const OwnerProfileTab();
   @override
   Widget build(BuildContext context) {
-    // TODO: Replace with real chat/notification UI
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.chat_bubble_outline, size: 60, color: Color(0xFF4E342E)),
-          SizedBox(height: 16),
-          Text('Messages: Chat with customers, notifications',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-}
-
-class _OwnerProfileTab extends StatelessWidget {
-  const _OwnerProfileTab();
-  @override
-  Widget build(BuildContext context) {
-    // TODO: Replace with real shop profile UI
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.person, size: 60, color: Color(0xFF4E342E)),
-          SizedBox(height: 16),
-          Text('Profile: Shop info, edit profile, settings',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
-      ),
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        ListTile(
+          leading: const Icon(Icons.store, size: 40, color: Color(0xFF4E342E)),
+          title: const Text('ข้อมูลร้าน/โปรไฟล์'),
+          subtitle: const Text('ดูและแก้ไขข้อมูลร้าน/เจ้าของร้าน'),
+        ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.edit),
+          title: const Text('แก้ไขโปรไฟล์'),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const EditProfileView()),
+            );
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.logout),
+          title: const Text('ออกจากระบบ'),
+          onTap: () async => FirebaseAuth.instance.signOut(),
+        ),
+      ],
     );
   }
 }

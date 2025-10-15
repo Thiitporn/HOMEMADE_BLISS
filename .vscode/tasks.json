@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install firebase_storage and image_picker",
+			"type": "shell",
+			"command": "flutter pub add firebase_storage image_picker",
+			"group": "build"
+		}
+	]
+}

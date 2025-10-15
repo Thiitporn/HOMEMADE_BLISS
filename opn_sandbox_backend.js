@@ -1,5 +1,6 @@
 const axios = require('axios');
 const express = require('express');
+require('dotenv').config();
 
 // const Omise = require('omise')({
 //   publicKey: process.env.OMISE_PUBLIC_KEY,
@@ -52,7 +53,7 @@ app.post('/create-promptpay', async (req, res) => {
     const qrRes = await axios.get(qrUrl, {
       responseType: 'arraybuffer',
       headers: {
-        Authorization: 'Basic ' + Buffer.from('skey_test_65d9tv4kdphsp77mgyz:').toString('base64')
+        Authorization: 'Basic ' + Buffer.from(process.env.OMISE_SECRET_KEY + ':').toString('base64')
       }
     });
     // Log ขนาดข้อมูลที่ได้จาก Omise

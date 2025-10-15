@@ -7,6 +7,44 @@ import '../../chat/chat_view.dart';
 class OrderHistoryView extends StatelessWidget {
   const OrderHistoryView({Key? key}) : super(key: key);
 
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'pending':
+        return 'รอยืนยัน';
+      case 'preparing':
+        return 'กำลังเตรียม';
+      case 'ready':
+        return 'พร้อมส่ง';
+      case 'completed':
+        return 'เสร็จสิ้น';
+      case 'cancelled':
+        return 'ยกเลิก';
+      case 'paid':
+        return 'ชำระเงินแล้ว';
+      default:
+        return status;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'pending':
+        return Colors.orange;
+      case 'preparing':
+        return Colors.blue;
+      case 'ready':
+        return Colors.purple;
+      case 'completed':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      case 'paid':
+        return Colors.teal;
+      default:
+        return const Color(0xFF74512D);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -42,15 +80,14 @@ class OrderHistoryView extends StatelessWidget {
               final o = orders[i];
               String orderId = o.id.length >= 8 ? o.id.substring(0, 8) : o.id;
               String status = o.status;
+              String statusText = _getStatusText(status);
+              Color statusColor = _getStatusColor(status);
               String finalTotal = o.finalTotal.toStringAsFixed(2);
               String dateStr = '';
               try {
                 dateStr = '${o.createdAt.day}/${o.createdAt.month}/${o.createdAt.year}';
               } catch (_) {}
               Color cardColor = Colors.white;
-              Color statusColor = const Color(0xFF74512D);
-              if (status == 'สำเร็จ') statusColor = Colors.green;
-              else if (status == 'ยกเลิก') statusColor = Colors.redAccent;
               return Card(
                 elevation: 2,
                 color: cardColor,
@@ -86,7 +123,7 @@ class OrderHistoryView extends StatelessWidget {
                                   Icon(Icons.info_outline, size: 18, color: statusColor),
                                   const SizedBox(width: 6),
                                   Text('สถานะ: ', style: const TextStyle(fontWeight: FontWeight.w600)),
-                                  Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
+                                  Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -177,7 +214,7 @@ class OrderHistoryView extends StatelessWidget {
                             children: [
                               Text('Order #$orderId', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                               const SizedBox(height: 4),
-                              Text('สถานะ: $status', style: TextStyle(color: statusColor, fontWeight: FontWeight.w600)),
+                              Text('สถานะ: $statusText', style: TextStyle(color: statusColor, fontWeight: FontWeight.w600)),
                               Text('ยอดสุทธิ: ฿$finalTotal', style: const TextStyle(fontSize: 13)),
                             ],
                           ),

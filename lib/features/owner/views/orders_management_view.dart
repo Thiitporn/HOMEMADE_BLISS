@@ -14,8 +14,6 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
   @override
   Widget build(BuildContext context) {
     final Color darkBrown = const Color(0xFF4E342E);
-    final Color lightBorder = const Color(0xFFD7CCC8);
-    final Color mediumBrown = const Color(0xFF8D6E63);
     
     return Scaffold(
       backgroundColor: const Color(0xFFFAF3EF),
@@ -30,16 +28,19 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
           // Filter tabs
           Container(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _buildFilterChip('ทั้งหมด', 'all'),
-                const SizedBox(width: 8),
-                _buildFilterChip('รอยืนยัน', 'pending'),
-                const SizedBox(width: 8),
-                _buildFilterChip('กำลังทำ', 'preparing'),
-                const SizedBox(width: 8),
-                _buildFilterChip('เสร็จแล้ว', 'completed'),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('ทั้งหมด', 'all'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('รอยืนยัน', 'pending'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('กำลังทำ', 'preparing'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('เสร็จแล้ว', 'completed'),
+                ],
+              ),
             ),
           ),
           // Orders list
@@ -51,9 +52,46 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 
-                final docs = snapshot.data?.docs ?? [];
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error, color: Colors.red, size: 48),
+                        const SizedBox(height: 16),
+                        Text('เกิดข้อผิดพลาด: ${snapshot.error}'),
+                      ],
+                    ),
+                  );
+                }
+                
+                final allDocs = snapshot.data?.docs ?? [];
+                final docs = _filterOrders(allDocs);
+                
+                // Debug: แสดงจำนวนและสถานะของคำสั่งซื้อ
                 if (docs.isEmpty) {
-                  return const Center(child: Text('ยังไม่มีคำสั่งซื้อ'));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          selectedFilter == 'all' 
+                            ? 'ยังไม่มีคำสั่งซื้อ' 
+                            : 'ไม่มีคำสั่งซื้อที่มีสถานะ "${_getFilterDisplayName(selectedFilter)}"',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        ),
+                        if (selectedFilter != 'all' && allDocs.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            '(มีคำสั่งซื้อทั้งหมด ${allDocs.length} รายการ)',
+                            style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
                 }
                 
                 return ListView.separated(
@@ -94,16 +132,37 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
     );
   }
   
-  Stream<QuerySnapshot<Map<String, dynamic>>> _getOrdersStream() {
-    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
-        .collection('orders')
-        .orderBy('createdAt', descending: true);
-    
-    if (selectedFilter != 'all') {
-      query = query.where('status', isEqualTo: selectedFilter);
+  String _getFilterDisplayName(String filter) {
+    switch (filter) {
+      case 'all': return 'ทั้งหมด';
+      case 'pending': return 'รอยืนยัน';
+      case 'preparing': return 'กำลังทำ';
+      case 'ready': return 'พร้อมส่ง';
+      case 'completed': return 'เสร็จแล้ว';
+      case 'cancelled': return 'ยกเลิก';
+      case 'paid': return 'ชำระเงินแล้ว';
+      default: return filter;
     }
-    
-    return query.snapshots();
+  }
+  
+  Stream<QuerySnapshot<Map<String, dynamic>>> _getOrdersStream() {
+    // ดึงข้อมูลทั้งหมดแล้ว filter ฝั่ง client เพื่อไม่ต้องสร้าง composite index
+    return FirebaseFirestore.instance
+        .collection('orders')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+  
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterOrders(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs
+  ) {
+    if (selectedFilter == 'all') {
+      return docs;
+    }
+    return docs.where((doc) {
+      final status = doc.data()['status'] as String?;
+      return status == selectedFilter;
+    }).toList();
   }
   
   Widget _buildOrderCard(String orderId, Map<String, dynamic> data) {
@@ -111,9 +170,9 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
     final Color lightBorder = const Color(0xFFD7CCC8);
     final Color mediumBrown = const Color(0xFF8D6E63);
     
-    final customerName = (data['customerName'] ?? 'ลูกค้า') as String;
+    final customerName = (data['name'] ?? 'ลูกค้า') as String;
     final status = (data['status'] ?? 'pending') as String;
-    final totalAmount = (data['totalAmount'] ?? 0).toDouble();
+    final totalAmount = (data['finalTotal'] ?? data['total'] ?? 0).toDouble();
     final items = (data['items'] ?? []) as List;
     final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
     final notes = (data['notes'] ?? '') as String;
@@ -168,7 +227,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
             
             // Items
             ...items.map((item) {
-              final name = item['productName'] ?? '';
+              final name = item['name'] ?? '';
               final variant = item['variant'] ?? '';
               final quantity = item['quantity'] ?? 0;
               final price = (item['price'] ?? 0).toDouble();
@@ -178,11 +237,11 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text('$name${variant.isNotEmpty ? ' ($variant)' : ''}'),
+                      child: Text('$name${variant.isNotEmpty ? ' ($variant)' : ''}', style: const TextStyle(fontSize: 14)),
                     ),
-                    Text('x$quantity'),
+                    Text('x$quantity', style: const TextStyle(fontSize: 14)),
                     const SizedBox(width: 16),
-                    Text('฿${(price * quantity).toStringAsFixed(2)}'),
+                    Text('฿${(price * quantity).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   ],
                 ),
               );
@@ -212,29 +271,50 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'รวม: ฿${totalAmount.toStringAsFixed(2)}',
-                      style: TextStyle(color: darkBrown, fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    if (createdAt != null)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        '${createdAt.day}/${createdAt.month}/${createdAt.year} ${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        'รวม: ฿${totalAmount.toStringAsFixed(2)}',
+                        style: TextStyle(color: darkBrown, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
-                  ],
+                      if (createdAt != null)
+                        Text(
+                          '${createdAt.day}/${createdAt.month}/${createdAt.year} ${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 if (status != 'completed' && status != 'cancelled')
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: mediumBrown,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  Flexible(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: mediumBrown,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        elevation: 4,
+                      ),
+                      onPressed: () => _updateOrderStatus(orderId, status),
+                      child: Text(
+                        _getNextStatusText(status),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
                     ),
-                    onPressed: () => _updateOrderStatus(orderId, status),
-                    child: Text(_getNextStatusText(status)),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      status == 'completed' ? 'เสร็จสิ้น' : 'ยกเลิก',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
                   ),
               ],
             ),
@@ -281,11 +361,10 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
   String _getNextStatusText(String status) {
     switch (status) {
       case 'pending':
+      case 'paid':
         return 'ยืนยัน';
       case 'preparing':
-        return 'พร้อมแล้ว';
-      case 'ready':
-        return 'เสร็จสิ้น';
+        return 'เสร็จแล้ว';
       default:
         return 'อัปเดต';
     }
@@ -293,26 +372,88 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
   
   Future<void> _updateOrderStatus(String orderId, String currentStatus) async {
     String nextStatus;
+    String notificationTitle;
+    String notificationBody;
+    
     switch (currentStatus) {
       case 'pending':
+      case 'paid':
         nextStatus = 'preparing';
+        notificationTitle = '🎉 คำสั่งซื้อของคุณได้รับการยืนยันแล้ว';
+        notificationBody = 'ร้านกำลังเตรียมสินค้าให้คุณ รอติดตามได้เลยนะคะ';
         break;
       case 'preparing':
-        nextStatus = 'ready';
-        break;
-      case 'ready':
         nextStatus = 'completed';
+        notificationTitle = '✅ คำสั่งซื้อของคุณเสร็จแล้ว!';
+        notificationBody = 'สินค้าของคุณพร้อมแล้ว ขอบคุณที่อุดหนุนค่ะ 💕';
         break;
       default:
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('ไม่สามารถอัปเดตสถานะ "$currentStatus" ได้'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         return;
     }
     
-    await FirebaseFirestore.instance
-        .collection('orders')
-        .doc(orderId)
-        .update({
-      'status': nextStatus,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      // 1. อัปเดตสถานะใน Firebase
+      await FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId)
+          .update({
+        'status': nextStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      // 2. ส่งการแจ้งเตือนไปหาลูกค้า (in-app notification)
+      final orderDoc = await FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId)
+          .get();
+      
+      final orderData = orderDoc.data();
+      final userId = orderData?['userId'] as String?;
+      
+      if (userId != null) {
+        // สร้าง in-app notification
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('notifications')
+            .add({
+          'title': notificationTitle,
+          'body': notificationBody,
+          'orderId': orderId,
+          'type': 'order_status',
+          'status': nextStatus,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('อัปเดตสถานะเป็น ${_getStatusText(nextStatus)} และแจ้งเตือนลูกค้าแล้ว'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('เกิดข้อผิดพลาด: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 }

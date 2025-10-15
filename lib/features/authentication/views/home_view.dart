@@ -36,6 +36,60 @@ class _HomeViewState extends State<HomeView> {
   int selectedNav = 0; // 0: Home, 1: Categories, 2: Orders, 3: Profile
   String searchQuery = '';
   final TextEditingController searchController = TextEditingController();
+  
+  // Carousel state
+  int _currentBannerIndex = 0;
+  final PageController _bannerPageController = PageController();
+  
+  final List<Map<String, String>> _bannerImages = [
+    {
+      'image': 'assets/images/cupcake.png',
+      'title': 'Cupcake สุดพิเศษ',
+      'subtitle': 'หวานละมุน ทุกคำ',
+    },
+    {
+      'image': 'assets/images/choco_cookie.png',
+      'title': 'Chocolate Cookie',
+      'subtitle': 'กรอบนอก นุ่มใน',
+    },
+    {
+      'image': 'assets/images/strawberry_tart.png',
+      'title': 'Strawberry Tart',
+      'subtitle': 'สดใหม่ทุกวัน',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-slide banner every 4 seconds
+    Future.delayed(Duration.zero, () {
+      _startAutoSlide();
+    });
+  }
+  
+  void _startAutoSlide() {
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 4));
+      if (!mounted) return false;
+      if (_bannerPageController.hasClients) {
+        final nextPage = (_currentBannerIndex + 1) % _bannerImages.length;
+        _bannerPageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+      return mounted;
+    });
+  }
+  
+  @override
+  void dispose() {
+    _bannerPageController.dispose();
+    searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,80 +139,116 @@ class _HomeViewState extends State<HomeView> {
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 0),
             children: [
-          // Banner (Promotion)
+          // Auto-sliding Banner Carousel
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                children: [
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Image.asset(
-                      'assets/images/landing1.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey[300],
-                        child: const Center(child: Icon(Icons.broken_image, size: 60)),
+            child: Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(
+                    height: 180,
+                    child: PageView.builder(
+                      controller: _bannerPageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentBannerIndex = index;
+                        });
+                      },
+                      itemCount: _bannerImages.length,
+                      itemBuilder: (context, index) {
+                        final banner = _bannerImages[index];
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.asset(
+                              banner['image']!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: Colors.grey[300],
+                                child: const Center(child: Icon(Icons.broken_image, size: 60)),
+                              ),
+                            ),
+                            // Gradient overlay
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withOpacity(0.3),
+                                    Colors.black.withOpacity(0.6),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Text content
+                            Positioned(
+                              left: 20,
+                              bottom: 20,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    banner['title']!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black45,
+                                          offset: Offset(0, 2),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    banner['subtitle']!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black45,
+                                          offset: Offset(0, 1),
+                                          blurRadius: 3,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Dots indicator
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    _bannerImages.length,
+                    (index) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: _currentBannerIndex == index ? 24 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _currentBannerIndex == index
+                            ? mediumBrown
+                            : mediumBrown.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ),
-                  Positioned(
-                    left: 16,
-                    top: 18,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'ลด 20% วันนี้!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black26,
-                                offset: Offset(0, 2),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'เมนูใหม่ Strawberry Tart',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black26,
-                                offset: Offset(0, 1),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: mediumBrown,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            elevation: 0,
-                          ),
-                          onPressed: () {},
-                          child: const Text('Shop Now', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
@@ -486,9 +576,6 @@ class _HomeViewState extends State<HomeView> {
               );
             },
           ),
-          const ListTile(leading: Icon(Icons.location_on_outlined), title: Text('Delivery Address')),
-          const ListTile(leading: Icon(Icons.payment_outlined), title: Text('Payment Methods')),
-          const ListTile(leading: Icon(Icons.settings_outlined), title: Text('Settings')),
         ],
       );
     }

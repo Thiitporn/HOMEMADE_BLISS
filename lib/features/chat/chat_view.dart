@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'chat_service.dart';
 
@@ -32,50 +31,55 @@ class _ChatViewState extends State<ChatView> {
     return user.displayName?.isNotEmpty == true ? user.displayName! : 'ลูกค้า';
   }
 
-  void _pickAndSendImage() async {
-    final picker = ImagePicker();
-    try {
-      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70, maxWidth: 1600);
-      if (picked == null) return;
-      final file = File(picked.path);
-      final fileSize = await file.length();
-      // Warn if file > 5MB
-      if (fileSize > 5 * 1024 * 1024) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไฟล์รูปภาพใหญ่เกิน 5MB กรุณาเลือกไฟล์ที่เล็กกว่านี้')));
-        return;
-      }
-      final fileName = '${widget.chatId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref = FirebaseStorage.instance.ref().child('chat_images/$fileName');
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
-      );
-      try {
-        final snapshot = await ref.putFile(file);
-        final url = await snapshot.ref.getDownloadURL();
-        final displayName = await getMyDisplayName();
-        await _chatService.sendMessage(
-          chatId: widget.chatId,
-          senderUid: myUid,
-          text: '',
-          imageUrl: url,
-          ownerUid: ownerUid,
-          senderDisplayName: displayName,
+  void _showImageUrlDialog() async {
+    final urlController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('วางลิงก์รูปภาพ'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: urlController,
+              decoration: const InputDecoration(hintText: 'https://...'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) return 'กรุณาวางลิงก์รูป';
+                final url = value.trim();
+                final isImage = (url.startsWith('http://') || url.startsWith('https://')) && (url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png'));
+                if (!isImage) return 'ลิงก์ต้องเป็นไฟล์รูป .jpg .jpeg .png';
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('ยกเลิก'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  final url = urlController.text.trim();
+                  final displayName = await getMyDisplayName();
+                  await _chatService.sendMessage(
+                    chatId: widget.chatId,
+                    senderUid: myUid,
+                    text: url,
+                    imageUrl: '',
+                    ownerUid: ownerUid,
+                    senderDisplayName: displayName,
+                  );
+                  if (mounted) Navigator.of(context).pop();
+                }
+              },
+              child: const Text('ส่ง'),
+            ),
+          ],
         );
-      } on FirebaseException catch (e) {
-        String msg = 'อัปโหลดรูปไม่สำเร็จ';
-        if (e.code == 'canceled') msg = 'ยกเลิกการอัปโหลด';
-        else if (e.code == 'quota-exceeded') msg = 'พื้นที่จัดเก็บเต็ม กรุณาติดต่อผู้ดูแลระบบ';
-        else if (e.code == 'unauthorized') msg = 'ไม่มีสิทธิ์อัปโหลด กรุณาเข้าสู่ระบบใหม่';
-        else if (e.message != null) msg += ': ${e.message}';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('เกิดข้อผิดพลาดขณะเลือกรูปภาพ')));
-    } finally {
-      if (mounted) Navigator.of(context).pop();
-    }
+      },
+    );
   }
   final _controller = TextEditingController();
   final _chatService = ChatService();
@@ -120,8 +124,9 @@ class _ChatViewState extends State<ChatView> {
                         ? ownerDisplayName
                         : (data['senderDisplayName'] as String? ?? 'ลูกค้า');
                     final isMe = senderUid == myUid;
-                    final text = data['text'] as String?;
-                    final imageUrl = data['imageUrl'] as String?;
+                    final text = data['text'] as String? ?? '';
+                    // final imageUrl = data['imageUrl'] as String?;
+                    final isImageLink = (text.startsWith('http://') || text.startsWith('https://')) && (text.endsWith('.jpg') || text.endsWith('.jpeg') || text.endsWith('.png'));
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
@@ -133,7 +138,10 @@ class _ChatViewState extends State<ChatView> {
                               right: isMe ? 0 : 32,
                               bottom: 2,
                             ),
-                            child: Text(senderName, style: const TextStyle(fontSize: 12, color: Color(0xFF74512D), fontWeight: FontWeight.w600)),
+                            child: Text(
+                              senderName,
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF74512D), fontWeight: FontWeight.w600),
+                            ),
                           ),
                           Row(
                             mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -146,15 +154,15 @@ class _ChatViewState extends State<ChatView> {
                                 ),
                               Flexible(
                                 child: Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 2),
-                                  padding: imageUrl != null ? const EdgeInsets.all(2) : const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.symmetric(vertical: 2.5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), // ปรับ padding กลางๆ
                                   decoration: BoxDecoration(
                                     color: isMe ? const Color(0xFFD7CCC8) : Colors.white,
                                     borderRadius: BorderRadius.only(
-                                      topLeft: const Radius.circular(16),
-                                      topRight: const Radius.circular(16),
-                                      bottomLeft: Radius.circular(isMe ? 16 : 4),
-                                      bottomRight: Radius.circular(isMe ? 4 : 16),
+                                      topLeft: const Radius.circular(18),
+                                      topRight: const Radius.circular(18),
+                                      bottomLeft: Radius.circular(isMe ? 18 : 8),
+                                      bottomRight: Radius.circular(isMe ? 8 : 18),
                                     ),
                                     boxShadow: [
                                       BoxShadow(
@@ -164,12 +172,37 @@ class _ChatViewState extends State<ChatView> {
                                       ),
                                     ],
                                   ),
-                                  child: imageUrl != null && imageUrl.isNotEmpty
-                                      ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(12),
-                                          child: Image.network(imageUrl, width: 180, height: 180, fit: BoxFit.cover),
+                                  child: isImageLink
+                                      ? GestureDetector(
+                                          onTap: () async {
+                                            await launchUrl(Uri.parse(text));
+                                          },
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(13),
+                                            child: Image.network(
+                                              text,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => const Text('ดูรูปไม่ได้', style: TextStyle(color: Colors.red, fontSize: 13)),
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return const SizedBox(
+                                                  height: 95,
+                                                  width: 95,
+                                                  child: Center(child: CircularProgressIndicator()),
+                                                );
+                                              },
+                                              height: 95,
+                                              width: 95,
+                                            ),
+                                          ),
                                         )
-                                      : Text(text ?? '', style: const TextStyle(fontSize: 15)),
+                                      : Text(
+                                          text,
+                                          style: const TextStyle(fontSize: 14, height: 1.22, color: Color(0xFF3E2723)),
+                                          textAlign: TextAlign.left,
+                                          softWrap: true,
+                                          overflow: TextOverflow.visible,
+                                        ),
                                 ),
                               ),
                               if (isMe)
@@ -194,7 +227,7 @@ class _ChatViewState extends State<ChatView> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.image, color: Color(0xFF74512D)),
-                  onPressed: _pickAndSendImage,
+                  onPressed: _showImageUrlDialog,
                   tooltip: 'แนบรูปภาพ',
                 ),
                 Expanded(

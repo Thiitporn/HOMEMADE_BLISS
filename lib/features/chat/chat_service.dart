@@ -11,16 +11,26 @@ class ChatService {
     required String chatId,
     required String senderUid,
     required String text,
+    String imageUrl = '',
+    String? ownerUid,
+    String? senderDisplayName,
   }) async {
-    await _db.collection('chats').doc(chatId).collection('messages').add({
+    final msgData = {
       'senderUid': senderUid,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
       'read': false,
-    });
-    await _db.collection('chats').doc(chatId).set({
-      'lastMessage': text,
+      'imageUrl': imageUrl,
+      if (senderDisplayName != null) 'senderDisplayName': senderDisplayName,
+    };
+    await _db.collection('chats').doc(chatId).collection('messages').add(msgData);
+    final chatUpdate = {
+      'lastMessage': imageUrl.isNotEmpty ? '[รูปภาพ]' : text,
       'lastTimestamp': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    };
+    if (ownerUid != null) {
+      chatUpdate['ownerUid'] = ownerUid;
+    }
+    await _db.collection('chats').doc(chatId).set(chatUpdate, SetOptions(merge: true));
   }
 }

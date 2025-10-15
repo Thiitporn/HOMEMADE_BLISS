@@ -47,10 +47,12 @@ class _EditProfileViewState extends State<EditProfileView> {
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
     if (uid == null) return;
+    final displayName = _displayNameCtrl.text.trim();
     final updateData = {
-      'displayName': _displayNameCtrl.text.trim(),
+      'displayName': displayName,
       'phone': _phoneCtrl.text.trim(),
     };
     if (_role == 'owner') {
@@ -59,6 +61,11 @@ class _EditProfileViewState extends State<EditProfileView> {
       updateData['shopPhone'] = _shopPhoneCtrl.text.trim();
     }
     await FirebaseFirestore.instance.collection('users').doc(uid).update(updateData);
+    // อัปเดต displayName ใน Firebase Auth ด้วย
+    if (user != null && user.displayName != displayName) {
+      await user.updateDisplayName(displayName);
+      await user.reload();
+    }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('บันทึกข้อมูลสำเร็จ')));
       Navigator.of(context).pop();

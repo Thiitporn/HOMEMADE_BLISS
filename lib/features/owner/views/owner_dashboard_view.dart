@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../common/in_app_notification.dart';
 import '../../chat/chat_view.dart';
+import '../../chat/chat_inbox_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'orders_management_view.dart';
@@ -267,11 +268,11 @@ class _OwnerDashboardViewState extends State<OwnerDashboardView> {
   final Color darkBrown = const Color(0xFF4E342E);
   final Color mediumBrown = const Color(0xFF8D6E63);
   final List<Widget> pages = const [
-    OwnerDashboardTab(),
-    OwnerProductsTab(),
-    OwnerOrdersTab(),
-    OwnerMessagesTab(),
-    OwnerProfileTab(),
+  OwnerDashboardTab(),
+  OwnerProductsTab(),
+  OwnerOrdersTab(),
+  ChatInboxView(),
+  OwnerProfileTab(),
   ];
 
   @override

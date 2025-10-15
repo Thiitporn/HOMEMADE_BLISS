@@ -1,4 +1,31 @@
 # homemade_bliss
+
+## Environment Setup (Backend)
+
+1. สร้างไฟล์ `.env` ที่ root ของโปรเจกต์ (หรือคัดลอกจาก `.env.example`)
+2. ใส่ค่า key จริงของคุณลงใน `.env` เช่น
+	```
+	STRIPE_SECRET_KEY=sk_test_xxx
+	STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+	OMISE_PUBLIC_KEY=pkey_test_xxx
+	OMISE_SECRET_KEY=skey_test_xxx
+	```
+3. **อย่า push ไฟล์ `.env` ขึ้น GitHub** (ควรเพิ่มไว้ใน `.gitignore` แล้ว)
+4. เวลาจะรัน backend ให้ใช้ library เช่น `dotenv` (Node.js) เพื่อโหลดค่า env อัตโนมัติ
+
+### ตัวอย่างการใช้งาน dotenv (Node.js)
+```js
+require('dotenv').config();
+// ...rest of your code
+```
+
+## การ clone หรือใช้งานโปรเจกต์นี้บนเครื่องอื่น
+
+1. clone repo จาก GitHub
+2. สร้างไฟล์ `.env` จาก `.env.example` แล้วใส่ key จริงของแต่ละเครื่อง
+3. รันโปรเจกต์ได้ทันที (ถ้าตั้งค่า env ถูกต้อง)
+
+---
 ---
 
 ## คู่มือ Step-by-step สำหรับ Week 2–3 (แนะแนวทางและสิ่งที่ต้องทำเอง)

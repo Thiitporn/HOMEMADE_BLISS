@@ -45,3 +45,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Prevent accidental commit of filter-repo replacements (may contain secrets)
+.git-filter-repo-replacements.txt

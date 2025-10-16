@@ -445,6 +445,7 @@ class _HomeViewState extends State<HomeView> {
                                       name: name,
                                       price: price,
                                       imageAsset: imageUrl.startsWith('http') ? null : imageUrl,
+                                      imageUrl: imageUrl.startsWith('http') ? imageUrl : null,
                                     );
                                     setState(() => selectedNav = 1);
                                   },
@@ -509,6 +510,7 @@ class _HomeViewState extends State<HomeView> {
                               'price': e.price,
                               'quantity': e.quantity,
                               'imageAsset': e.imageAsset,
+                              'imageUrl': e.imageUrl,
                             }).toList(),
                           ),
                         ),
@@ -522,20 +524,51 @@ class _HomeViewState extends State<HomeView> {
           }
           final item = cart.items[index];
           return ListTile(
-            leading: item.imageAsset != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(item.imageAsset!, width: 48, height: 48, fit: BoxFit.cover,
-                        errorBuilder: (c, e, s) => const Icon(Icons.image)),
-                  )
-                : const Icon(Icons.image),
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: () {
+                if (item.imageAsset != null && item.imageAsset!.isNotEmpty) {
+                  return Image.asset(
+                    item.imageAsset!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) => const Icon(Icons.image),
+                  );
+                }
+                if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
+                  return Image.network(
+                    item.imageUrl!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) => Image.asset(
+                      'assets/images/logo.png',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                    ),
+                  );
+                }
+                return const Icon(Icons.image);
+              }(),
+            ),
             title: Text(item.name, style: TextStyle(color: darkBrown, fontWeight: FontWeight.bold)),
             subtitle: Text('฿${item.price} x ${item.quantity}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(onPressed: () => cart.removeOne(item.id), icon: const Icon(Icons.remove_circle_outline)),
-                IconButton(onPressed: () => cart.addItem(id: item.id, name: item.name, price: item.price, imageAsset: item.imageAsset), icon: const Icon(Icons.add_circle_outline)),
+                IconButton(
+                  onPressed: () => cart.addItem(
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    imageAsset: item.imageAsset,
+                    imageUrl: item.imageUrl,
+                  ),
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
                 IconButton(onPressed: () => cart.removeAll(item.id), icon: const Icon(Icons.delete_outline)),
               ],
             ),

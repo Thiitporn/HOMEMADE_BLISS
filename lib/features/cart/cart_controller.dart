@@ -5,6 +5,7 @@ class CartItem {
   final String name;
   final double price;
   final String? imageAsset;
+  final String? imageUrl;
   int quantity;
 
   CartItem({
@@ -12,6 +13,7 @@ class CartItem {
     required this.name,
     required this.price,
     this.imageAsset,
+    this.imageUrl,
     this.quantity = 1,
   });
 }
@@ -28,12 +30,20 @@ class CartController extends ChangeNotifier {
     required String name,
     required double price,
     String? imageAsset,
+    String? imageUrl,
     int qty = 1,
   }) {
     if (_items.containsKey(id)) {
       _items[id]!.quantity += qty;
     } else {
-      _items[id] = CartItem(id: id, name: name, price: price, imageAsset: imageAsset, quantity: qty);
+      _items[id] = CartItem(
+        id: id,
+        name: name,
+        price: price,
+        imageAsset: imageAsset,
+        imageUrl: imageUrl,
+        quantity: qty,
+      );
     }
     notifyListeners();
   }

@@ -33,7 +33,21 @@ class _ProductListViewState extends State<ProductListView> {
                 final p = products[i];
                 return Card(
                   child: ListTile(
-                    leading: Image.network(p.imageUrl, width: 56, height: 56, fit: BoxFit.cover),
+                    leading: p.imageUrl.startsWith('http')
+                        ? Image.network(
+                            p.imageUrl,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Image.asset('assets/images/logo.png', width: 56, height: 56, fit: BoxFit.cover),
+                          )
+                        : Image.asset(
+                            p.imageUrl,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Image.asset('assets/images/logo.png', width: 56, height: 56, fit: BoxFit.cover),
+                          ),
                     title: Text(p.name),
                     subtitle: Text('${p.description}\n${p.variants.join(', ')}'),
                     trailing: Text('฿${p.price.toStringAsFixed(2)}'),

@@ -111,19 +111,37 @@ class _CheckoutViewState extends State<CheckoutView> {
                           padding: const EdgeInsets.symmetric(vertical: 8.0),
                           child: Row(
                             children: [
-                              if (item['imageAsset'] != null && item['imageAsset'].toString().isNotEmpty)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.asset(
-                                    item['imageAsset'],
-                                    width: 40,
-                                    height: 40,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (c, e, s) => const Icon(Icons.image),
-                                  ),
-                                )
-                              else
-                                const Icon(Icons.image, size: 40),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: () {
+                                  final asset = item['imageAsset']?.toString() ?? '';
+                                  final url = item['imageUrl']?.toString() ?? '';
+                                  if (asset.isNotEmpty) {
+                                    return Image.asset(
+                                      asset,
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (c, e, s) => const Icon(Icons.image),
+                                    );
+                                  }
+                                  if (url.isNotEmpty) {
+                                    return Image.network(
+                                      url,
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (c, e, s) => Image.asset(
+                                        'assets/images/logo.png',
+                                        width: 40,
+                                        height: 40,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    );
+                                  }
+                                  return const Icon(Icons.image, size: 40);
+                                }(),
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(

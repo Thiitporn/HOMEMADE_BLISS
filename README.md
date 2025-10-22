@@ -1,402 +1,198 @@
-# homemade_bliss
+# Homemade Bliss
 
-## Environment Setup (Backend)
+Homemade Bliss คือแอปพลิเคชันไมโครคอมเมิร์ซสำหรับร้านขนมโฮมเมด ที่ออกแบบให้ทั้งลูกค้าและเจ้าของร้านสามารถจัดการการซื้อขายได้ครบวงจรในแอปเดียว (Authentication, คำสั่งซื้อ, ชำระเงินออนไลน์, แชท, แจ้งเตือน และแดชบอร์ดบริหารร้าน)
 
-1. สร้างไฟล์ `.env` ที่ root ของโปรเจกต์ (หรือคัดลอกจาก `.env.example`)
-2. ใส่ค่า key จริงของคุณลงใน `.env` เช่น
-	```
-	STRIPE_SECRET_KEY=sk_test_xxx
-	STRIPE_PUBLISHABLE_KEY=pk_test_xxx
-	OMISE_PUBLIC_KEY=pkey_test_xxx
-	OMISE_SECRET_KEY=skey_test_xxx
-	```
-3. **อย่า push ไฟล์ `.env` ขึ้น GitHub** (ควรเพิ่มไว้ใน `.gitignore` แล้ว)
-4. เวลาจะรัน backend ให้ใช้ library เช่น `dotenv` (Node.js) เพื่อโหลดค่า env อัตโนมัติ
+## Table of Contents
+- [Overview](#overview)
+- [Feature Highlights](#feature-highlights)
+- [Tech Stack](#tech-stack)
+- [Requirements](#requirements)
+- [Quick Start (Flutter App)](#quick-start-flutter-app)
+- [Firebase & Firestore Setup](#firebase--firestore-setup)
+- [Payments Backend (Stripe & PromptPay)](#payments-backend-stripe--promptpay)
+- [Project Structure](#project-structure)
+- [Useful Commands](#useful-commands)
+- [Maintenance Checklist](#maintenance-checklist)
+- [Resources](#resources)
 
-### ตัวอย่างการใช้งาน dotenv (Node.js)
-```js
-require('dotenv').config();
-// ...rest of your code
+## Overview
+- ลูกค้าเลือกสินค้า จัดการตะกร้า ใช้คูปอง ชำระเงินผ่านบัตรเครดิต (Stripe) หรือพร้อมเพย์ (Omise promptpay ใน backend ตัวอย่าง) พร้อมรับการแจ้งเตือนสถานะต่าง ๆ
+- เจ้าของร้านบริหารสินค้า สต็อก คำสั่งซื้อ แชทกับลูกค้า และดูสถิติสรุปบน Owner Dashboard
+- ใช้ Firebase ในการจัดการ Auth, Firestore, Storage รวมถึง push/local notifications ผ่าน `flutter_local_notifications`
+- รองรับการขยายฟีเจอร์อื่น ๆ (personalization, promotions, storefront) ด้วยโครงสร้างโค้ดแบบ feature-first ภายใต้ `lib/features/*`
+
+## Feature Highlights
+- **Customer App**: สมัคร/ล็อกอิน, ค้นหาและดูสินค้าพร้อม variants, เพิ่มลงตะกร้า, คำนวณราคาหลังคูปอง, Checkout, ดูประวัติคำสั่งซื้อ และรับการแจ้งเตือน
+- **Owner Dashboard**: สรุปสถิติยอดขาย, จัดการสินค้าและสต็อก, อัปเดตสถานะออเดอร์, สร้างคูปอง, แชทกับลูกค้า และแก้ไขโปรไฟล์ร้าน
+- **Real-time Services**: ข้อมูลซิงก์กับ Firestore, สั่งซื้อแล้วตัดสต็อกอัตโนมัติ, ชำระเงินสำเร็จแล้วส่ง Local Notification และนำผู้ใช้ไปหน้า success
+- **Extensible Modules**: โครงสร้างแยกตามฟีเจอร์ (cart, chat, notifications, personalization ฯลฯ) ทำให้เพิ่ม/ปรับแต่งได้ง่ายในอนาคต
+
+## Tech Stack
+- **Frontend**: Flutter (Material 3 style, Provider + ChangeNotifier, Firebase SDKs)
+- **Backend (optional demo)**: Node.js (Express, Stripe SDK, Omise/Opn promptpay ตัวอย่าง), dotenv สำหรับ environment config
+- **Cloud**: Firebase Authentication, Cloud Firestore, Firebase Storage
+- **Payments**: Stripe (บัตรเครดิต) + โค้ดตัวอย่าง Omise PromptPay สำหรับ QR
+- **Notifications**: flutter_local_notifications (แจ้งเตือนในเครื่อง)
+
+## Requirements
+- Flutter SDK 3.x (Dart >= 2.17)
+- Android Studio หรือ Xcode สำหรับ build native
+- Firebase project ที่เปิดใช้งาน Authentication + Firestore + Storage
+- Stripe account (test mode) และ Omise/Opn account หากต้องการ PromptPay
+- Node.js 18+ (เฉพาะถ้าจะรัน backend ตัวอย่าง `opn_sandbox_backend.js`)
+
+## Quick Start (Flutter App)
+1. **Clone**
+   ```bash
+   git clone https://github.com/<your-org>/homemade_bliss.git
+   cd homemade_bliss
+   ```
+2. **ติดตั้ง package Flutter**
+   ```bash
+   flutter pub get
+   ```
+3. **เตรียมไฟล์ Firebase**
+   - Android: วาง `google-services.json` ใน `android/app/`
+   - iOS/macOS: วาง `GoogleService-Info.plist` ในโฟลเดอร์ Runner และอัปเดต Xcode project
+   - ถ้าใช้ FlutterFire CLI ให้รัน `flutterfire configure` แล้วอัปเดต `main.dart` ให้ใช้ค่า `DefaultFirebaseOptions`
+4. **ปรับ Stripe Publishable Key** ใน `lib/common/stripe_config.dart`
+   - ตั้งค่า `StripeConfig.ensureInitialized()` ให้ชี้ endpoint backend ของคุณ (ค่าเดิมคือ IP เฉพาะสภาพแวดล้อมเดิม)
+   - หรือกำหนดคีย์ใน `_fallbackKey` เฉพาะเครื่องทดสอบ
+5. **ตั้งค่า assets**
+   - รูปภาพอยู่ที่ `assets/images/`
+   - ถ้ามีฟอนต์/รูปเพิ่ม ตรวจสอบให้ประกาศใน `pubspec.yaml`
+6. **Run แอป**
+   ```bash
+   flutter run -d <deviceId>
+   ```
+   - Android Emulator / iOS Simulator / Web (ต้องเปิด Firebase Hosting/Config เพิ่มเติมหาก build สำหรับ Web)
+
+> TIP: หากใช้ VS Code task ที่ฝังไว้ ให้รัน task `Install firebase_storage and image_picker` เพื่อ sync dependencies เพิ่มเติมก่อน build (ครั้งแรกเท่านั้น)
+
+## Firebase & Firestore Setup
+1. เปิดใช้งาน **Authentication (Email/Password)**
+2. สร้าง **Cloud Firestore** โหมด Production
+3. วาง **Security Rules** ที่บังคับสิทธิ์เจ้าของร้าน/ลูกค้า เช่น
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       function isSignedIn() { return request.auth != null; }
+       function userRole(uid) {
+         return get(/databases/$(database)/documents/users/$(uid)).data.role;
+       }
+       function isOwner() {
+         return isSignedIn() && userRole(request.auth.uid) == 'owner';
+       }
+
+       match /products/{id} {
+         allow read: if true;
+         allow create, update, delete: if isOwner();
+       }
+
+       match /users/{id} {
+         allow read: if isOwner() || (isSignedIn() && request.auth.uid == id);
+         allow create, update: if isSignedIn() && request.auth.uid == id;
+       }
+
+       match /orders/{id} {
+         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+         allow read: if isOwner() || (isSignedIn() && resource.data.userId == request.auth.uid);
+         allow update: if isOwner();
+       }
+
+       match /chats/{chatId} {
+         allow read, write: if isOwner() || (isSignedIn() && request.auth.uid in [resource.data.ownerUid, resource.data.customerUid]);
+       }
+     }
+   }
+   ```
+4. สร้างข้อมูลตั้งต้น
+   - `users/<uid>`: ระบุ `role` (`owner` หรือ `customer`), `displayName`, `phone`, `createdAt`
+   - `products`: เพิ่มเอกสารด้วยฟิลด์ `name`, `description`, `imageUrl`, `variants`, `basePrice`, `totalStock`, `createdAt`
+   - `coupons`: หากต้องการ ให้สร้างฟิลด์ `code`, `discountType`, `value`, `isActive`, `expiredAt`
+   - `orders`: ปล่อยให้แอปสร้างเมื่อชำระเงินสำเร็จ
+   - `chats`: แอปจะสร้างอัตโนมัติเมื่อเริ่มสนทนา
+5. ตั้งค่า **Firebase Storage** (สำหรับอัปโหลดสลิป/รูปสินค้า) และเพิ่ม Security Rules ให้สอดคล้องกับ user role หากเปิดใช้งาน
+
+## Payments Backend (Stripe & PromptPay)
+ไฟล์ตัวอย่างอยู่ที่ `opn_sandbox_backend.js`
+
+1. ติดตั้ง dependencies
+   ```bash
+   npm install express stripe axios dotenv
+   ```
+2. สร้างไฟล์ `.env` ที่ root ของ backend ด้วยค่าจริงของคุณ
+   ```env
+   STRIPE_SECRET_KEY=sk_test_xxx
+   STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+   OMISE_PUBLIC_KEY=pkey_test_xxx
+   OMISE_SECRET_KEY=skey_test_xxx
+   ```
+3. รันเซิร์ฟเวอร์
+   ```bash
+   node opn_sandbox_backend.js
+   ```
+4. อัปเดต base URL ใน `lib/common/stripe_config.dart` และ `lib/features/orders/views/payment_view.dart` ให้เรียก endpoint ตามที่รันไว้ (เช่น `http://localhost:3000` หรือผ่าน LAN)
+5. (ตัวเลือก) เปิดใช้งานส่วน Omise PromptPay โดยเลิกคอมเมนต์บล็อก Omise และติดตั้ง SDK เพิ่มเติม (`npm install omise`)
+
+> หมายเหตุ: ห้าม commit ข้อมูล `.env` หรือคีย์จริงขึ้น Git Repository
+
+## Project Structure
+```
+homemade_bliss/
+|-- lib/
+|   |-- main.dart
+|   |-- app.dart
+|   |-- common/            # การตั้งค่ากลาง (stripe_config, notification_service, in-app alerts)
+|   |-- features/
+|   |   |-- authentication/
+|   |   |-- cart/
+|   |   |-- chat/
+|   |   |-- coupons/
+|   |   |-- dashboard/
+|   |   |-- notifications/
+|   |   |-- orders/
+|   |   |-- owner/
+|   |   |-- personalization/
+|   |   |-- products/
+|   |   |-- store/
+|   |-- services/          # การเชื่อมต่อภายนอกอื่น ๆ
+|   |-- util/              # helper functions
+|-- assets/
+|   |-- images/
+|   |-- fonts/
+|-- android/, ios/, macos/, linux/, windows/, web/
+|-- opn_sandbox_backend.js # backend sample สำหรับชำระเงิน
+|-- docs/styling_reference.md
+|-- pubspec.yaml
+|-- README.md
 ```
 
-## การ clone หรือใช้งานโปรเจกต์นี้บนเครื่องอื่น
+## Useful Commands
+- ติดตั้ง dependencies: `flutter pub get`
+- รันแอป (device/OS ต่างกัน): `flutter run -d <deviceId>`
+- ทดสอบหน่วย (widget test): `flutter test`
+- ตรวจโค้ด format: `flutter format lib test`
+- สร้าง build สำหรับ Android (debug APK): `flutter build apk --debug`
+- สร้าง build สำหรับ iOS (release): `flutter build ios --release`
 
-1. clone repo จาก GitHub
-2. สร้างไฟล์ `.env` จาก `.env.example` แล้วใส่ key จริงของแต่ละเครื่อง
-3. รันโปรเจกต์ได้ทันที (ถ้าตั้งค่า env ถูกต้อง)
+## Maintenance Checklist
+- [ ] อัปเดต Firebase config ทุกครั้งที่สลับ project หรือเพิ่ม platform ใหม่
+- [ ] เปลี่ยนค่า `_fallbackKey` ใน `StripeConfig` ก่อนปล่อย production
+- [ ] ตรวจสอบให้ Notification permission ขอสำเร็จบน Android 13+ (`NotificationService.init()`)
+- [ ] ทดสอบ flow ชำระเงินด้วย Stripe test cards / PromptPay ก่อนปล่อยจริง
+- [ ] สำรอง Security Rules และจัดการการ deploy ผ่าน Firebase CLI หากมีการแก้ไข
+- [ ] ตรวจสอบ dependencies ใน `pubspec.yaml` ให้อัปเดตสม่ำเสมอ (ใช้ `flutter pub outdated`)
+- [ ] อ่านคู่มือธีมใน `docs/styling_reference.md` ก่อนแก้ UI หลัก
 
----
----
-
-## คู่มือ Step-by-step สำหรับ Week 2–3 (แนะแนวทางและสิ่งที่ต้องทำเอง)
-
-### Week 2: UX/UI & Project Setup
-
-#### สิ่งที่ผมช่วยให้แล้ว
-- ตัวอย่าง Wireframe, User Flow, Theme (ดูด้านบน)
-- โครงสร้างโฟลเดอร์ในโปรเจ็กต์ Flutter
-- ตัวอย่าง README.md นี้
-
-#### สิ่งที่คุณควรทำเอง
-1. วาด wireframe ใน Figma/Whimsical หรือวาดมือแล้วถ่ายรูป (ใช้ตัวอย่างด้านบนเป็นแนวทาง)
-2. สรุปปัญหา/ผู้ใช้เป้าหมาย (Problem Statement & Target User) เป็นข้อความสั้น ๆ
-3. เลือกธีม/สี/ฟอนต์ที่ชอบ (สามารถใช้ตัวอย่างที่ให้ไว้)
-4. ตรวจสอบโครงสร้างโฟลเดอร์ในโปรเจ็กต์ให้ตรงกับที่แนะนำ (lib/features, assets/fonts, ...)
-
----
-
-### Week 3: Vertical Slice & Data & Sync
-
-#### สิ่งที่ผมช่วยให้แล้ว
-- ตัวอย่าง schema Firestore (products, users, orders)
-- ตัวอย่าง Security Rules (ดูด้านล่าง)
-- โค้ด Auth, CRUD, เชื่อม Firestore (ในโปรเจ็กต์)
-- Error handling ตัวอย่างในโค้ด
-
-#### สิ่งที่คุณควรทำเอง
-1. ตั้งค่า Firebase Project (ถ้ายังไม่มี)
-2. เปิดใช้งาน Authentication (Email/Password)
-3. สร้าง Firestore Database (เลือกโหมด production หรือ test ตามต้องการ)
-4. อัปเดต Security Rules (คัดลอกตัวอย่างด้านล่างไปวางใน Firestore Rules)
-5. สร้างคอลเลกชัน/เอกสารเริ่มต้น:
-	 - `users`: สร้างเอกสาร `<uid>` (uid จาก Auth) ใส่ฟิลด์ `role: 'owner'` หรือ `'customer'`
-	 - `products`: เพิ่มสินค้าตัวอย่าง (ใช้ปุ่ม Add Product ในแอป หรือเพิ่มเองใน Firestore)
-	 - `orders`: ยังไม่ต้องสร้างเอง รอให้แอปสร้างเมื่อมีการสั่งซื้อ
-6. ทดสอบการล็อกอิน/สมัคร/เพิ่มสินค้า/ดูสินค้า/ลบสินค้า ตาม flow ที่ออกแบบไว้
-
----
-
-## วิธีตั้งค่า Firebase/Firestore/Rules (Step-by-step)
-
-1. สร้างโปรเจ็กต์ Firebase ที่ https://console.firebase.google.com/
-2. เพิ่มแอป (Android/iOS/Web) และดาวน์โหลดไฟล์ config (google-services.json, GoogleService-Info.plist, ฯลฯ) ใส่ในโปรเจ็กต์ Flutter ตามคู่มือ
-3. เปิดใช้งาน Authentication → Email/Password
-4. เปิดใช้งาน Firestore Database (เลือกโหมดที่เหมาะสม)
-5. ตั้งค่า Security Rules (คัดลอกด้านล่างไปวางในแท็บ Rules)
-
-```
-// rules_version = '2';
-service cloud.firestore {
-	match /databases/{database}/documents {
-		function isSignedIn() { return request.auth != null; }
-		function userRole(uid) {
-			return get(/databases/$(database)/documents/users/$(uid)).data.role;
-		}
-		function isOwner() {
-			return isSignedIn() && userRole(request.auth.uid) == 'owner';
-		}
-
-		// Products: public read, only owner can write
-		match /products/{productId} {
-			allow read: if true;
-			allow create, update, delete: if isOwner();
-		}
-
-		// Users: owner อ่านได้ทั้งหมด (ถ้าต้องการ), ผู้ใช้แก้ไขของตนเองได้
-		match /users/{userId} {
-			allow read: if isOwner() || (isSignedIn() && request.auth.uid == userId);
-			allow create: if isSignedIn() && request.auth.uid == userId;
-			allow update: if isSignedIn() && request.auth.uid == userId;
-		}
-
-		// Orders
-		match /orders/{orderId} {
-			// ลูกค้า: สร้างของตัวเอง, อ่านของตัวเอง
-			allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-			allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-
-			// เจ้าของร้าน: อ่าน/อัปเดตสถานะออเดอร์ทั้งหมด (เช่น เปลี่ยน status)
-			allow read, update: if isOwner();
-		}
-	}
-}
-```
-
-6. สร้างข้อมูลเริ่มต้น:
-	 - ไปที่ Firestore Database → Start collection → `users` → สร้าง document id ตรงกับ uid ใน Auth
-	 - ใส่ฟิลด์ดังนี้ (ตัวอย่างสำหรับ owner):
-		 - **role**: `'owner'` (string)
-		 - **email**: `'owner@email.com'` (string)
-		 - **phone**: `'0812345678'` (string)
-		 - **displayName**: `'ชื่อเจ้าของร้าน'` (string)
-		 - **createdAt**: `Timestamp` (เลือก Now)
-		 - (ถ้ามีข้อมูลร้าน: shopName, shopAddress, ... เพิ่มได้)
-
-	 - ตัวอย่าง users document (owner):
-		 ```
-		 {
-			 "role": "owner",
-			 "email": "owner@email.com",
-			 "phone": "0812345678",
-			 "displayName": "คุณโฮมเมด",
-			 "createdAt": <Timestamp>
-		 }
-		 ```
-
-	 - ตัวอย่าง users document (customer):
-		 ```
-		 {
-			 "role": "customer",
-			 "email": "customer@email.com",
-			 "phone": "0899999999",
-			 "displayName": "คุณลูกค้า",
-			 "createdAt": <Timestamp>
-		 }
-		 ```
-
-	 - เพิ่มสินค้าใน `products` (ผ่านแอปหรือ Firestore):
-		 - **name**: `'Soft Cookie'` (string)
-		 - **description**: `'คุกกี้นุ่มเต็มรส'` (string)
-		 - **imageUrl**: `'https://via.placeholder.com/150'` (string)
-		 - **price**: `59` (number)
-		 - **stock**: `10` (number)
-		 - **variants**: `["ช็อกโกแลต", "เมคาเดเมีย"]` (array of string)
-		 - **createdAt**: `Timestamp` (เลือก Now หรือใช้ serverTimestamp ในแอป)
-
-	 - ตัวอย่าง products document:
-		 ```
-		 {
-			 "name": "Soft Cookie",
-			 "description": "คุกกี้นุ่มเต็มรส",
-			 "imageUrl": "https://via.placeholder.com/150",
-			 "price": 59,
-			 "stock": 10,
-			 "variants": ["ช็อกโกแลต", "เมคาเดเมีย"],
-			 "createdAt": <Timestamp>
-		 }
-		 ```
-
-	 - ตรวจสอบให้มีฟิลด์ `createdAt` (Timestamp) ในทุกสินค้า เพื่อรองรับการเรียงลำดับ
-
-7. ทดสอบการใช้งาน:
-	 - ล็อกอินเป็น owner → เพิ่ม/ลบสินค้าได้
-	 - ล็อกอินเป็น customer → ดูสินค้าได้ แต่เพิ่ม/ลบไม่ได้
-	 - สั่งซื้อ (Place Order) → สร้างเอกสารใน `orders` อัตโนมัติ
-
----
-
-## 6. โครงสร้างแชท (Chat) และ Edit Profile
-
-### 6.1 โครงสร้าง Firestore สำหรับแชท (Chats/Messages)
-
-- **chats** (collection)
-	- **chatId** (document, สร้างจาก customerUid_ownerUid หรือ autoId)
-		- **customerUid**: string (uid ของลูกค้า)
-		- **ownerUid**: string (uid ของเจ้าของร้าน)
-		- **lastMessage**: string
-		- **lastTimestamp**: Timestamp
-		- **messages** (subcollection)
-			- **messageId** (document)
-				- **senderUid**: string
-				- **text**: string
-				- **timestamp**: Timestamp
-				- **read**: bool
-
-**ตัวอย่าง chats document:**
-```
-chats/
-	customerUid_ownerUid/  (หรือ autoId)
-		customerUid: "uid_customer"
-		ownerUid: "uid_owner"
-		lastMessage: "สวัสดีค่ะ ขอสอบถามสินค้า"
-		lastTimestamp: <Timestamp>
-		messages/
-			msg1/
-				senderUid: "uid_customer"
-				text: "สวัสดีค่ะ ขอสอบถามสินค้า"
-				timestamp: <Timestamp>
-				read: false
-			msg2/
-				senderUid: "uid_owner"
-				text: "สอบถามได้เลยค่ะ"
-				timestamp: <Timestamp>
-				read: true
-```
-
-### 6.2 Wireframe หน้าแชท (Chat UI)
-```
-┌───────────────────────────────┐
-│  แชทกับร้าน Homemade Bliss     │
-│  ───────────────────────────  │
-│  [คุณลูกค้า]: สวัสดีค่ะ ขอสอบถามสินค้า │
-│  [ร้าน]: สอบถามได้เลยค่ะ           │
-│  ...                            │
-│  [ช่องพิมพ์ข้อความ........][ส่ง]   │
-└───────────────────────────────┘
-```
-
-**มาตรฐาน:**
-- ลูกค้าสามารถเริ่มแชทกับร้านได้ 1-1 (1 customer : 1 owner)
-- ข้อความใหม่ push เข้า subcollection messages
-- มี lastMessage/lastTimestamp ใน document หลักเพื่อ query รายการแชทเร็ว
-- สามารถเพิ่มฟีเจอร์แจ้งเตือน (notification) ได้ในอนาคต
-
----
-
-### 6.3 Edit Profile (ลูกค้า/เจ้าของร้าน)
-
-**ฟิลด์ที่ควรมีใน users:**
-- displayName: string (ชื่อที่แสดง)
-- email: string
-- phone: string
-- (owner เพิ่ม shopName, shopAddress, shopPhone ได้)
-- createdAt: Timestamp
-
-**Wireframe Edit Profile:**
-```
-┌───────────────────────────────┐
-│  แก้ไขโปรไฟล์                  │
-│  [ชื่อที่แสดง.............]     │
-│  [เบอร์โทร.................]     │
-│  [อีเมล...................]     │
-│  (เจ้าของร้าน: [ชื่อร้าน] [ที่อยู่ร้าน] [เบอร์ร้าน]) │
-│  [บันทึก]                        │
-└───────────────────────────────┘
-```
-
-**มาตรฐาน:**
-- ดึงข้อมูลจาก users/<uid> มาแสดงในฟอร์ม
-- กดบันทึกแล้ว update ข้อมูลใน Firestore
-- (อีเมลอาจแก้ไม่ได้ ขึ้นกับ business logic)
-
-**ตัวอย่าง users document (owner):**
-```
-{
-	"role": "owner",
-	"displayName": "คุณโฮมเมด",
-	"email": "owner@email.com",
-	"phone": "0812345678",
-	"shopName": "Homemade Bliss",
-	"shopAddress": "123/4 ถ.ขนมหวาน กทม.",
-	"shopPhone": "021234567",
-	"createdAt": <Timestamp>
-}
-```
-
-**ตัวอย่าง users document (customer):**
-```
-{
-	"role": "customer",
-	"displayName": "คุณลูกค้า",
-	"email": "customer@email.com",
-	"phone": "0899999999",
-	"createdAt": <Timestamp>
-}
-```
-
----
-
-## 7. สรุปสิ่งที่ต้องทำเพิ่ม (Action Items)
-
-- เพิ่มคอลเลกชัน chats/messages ใน Firestore ตาม schema
-- เพิ่มฟิลด์ shopName, shopAddress, shopPhone ใน users (owner)
-- เพิ่มหน้า Edit Profile (ดึง/อัปเดต users/<uid>)
-- เพิ่มหน้าแชท (ดึง/ส่งข้อความใน chats/messages)
-- ทดสอบ flow: ลูกค้าทักหาเจ้าของร้าน, เจ้าของร้านตอบกลับ, แก้ไขโปรไฟล์
-
----
-
-## หมายเหตุเพิ่มเติม
-- ถ้าต้องการเพิ่มฟีเจอร์ใหม่ (เช่น chat, แจ้งเตือน) ให้เพิ่มคอลเลกชันใหม่ใน Firestore และปรับ Rules ตามความเหมาะสม
-- ถ้าต้องการให้ช่วยตรวจสอบ wireframe, flow, หรือโค้ด แจ้งได้เลย
-- ถ้าติดปัญหาใด ๆ ในขั้นตอนข้างต้น ส่ง screenshot หรือ error message มาได้เลย ผมจะช่วยแก้ไขให้
-
-## 3. ตัวอย่าง Wireframe (3–5 หน้าจอ)
-
-### 1. หน้า Home (ลูกค้า)
-```
-┌───────────────────────────────┐
-│  โลโก้ Homemade Bliss         │
-│  [ค้นหา]                      │
-│  ┌───────────────┐            │
-│  │  รูปสินค้า   │  Soft Cookie  ฿59  [Add]
-│  └───────────────┘            │
-│  ...                          │
-│  [Tab: Home | Categories | Orders | Profile] │
-└───────────────────────────────┘
-```
-
-### 2. หน้า Cart/Orders (ลูกค้า)
-```
-┌───────────────────────────────┐
-│  ตะกร้าสินค้า                 │
-│  ┌───────────────┐            │
-│  │  Soft Cookie │  x2  ฿118   │
-│  └───────────────┘            │
-│  รวม: ฿118                    │
-│  [สั่งซื้อ]                   │
-└───────────────────────────────┘
-```
-
-### 3. หน้า Owner Dashboard (เจ้าของร้าน)
-```
-┌───────────────────────────────┐
-│  Owner Dashboard              │
-│  [Tab: Dashboard | Products | Orders | Messages | Profile] │
-│  ┌───────────────┐            │
-│  │  Soft Cookie │  ฿59  สต็อก:10 [⋮]│
-│  └───────────────┘            │
-│  [ + Add Product ]            │
-└───────────────────────────────┘
-```
-
-### 4. หน้า Login/Signup
-```
-┌───────────────────────────────┐
-│  Login / Signup               │
-│  [Email]                      │
-│  [Password]                   │
-│  [Sign in]  [Sign up]         │
-└───────────────────────────────┘
-```
-
-### 5. หน้า Profile
-```
-┌───────────────────────────────┐
-│  โปรไฟล์ผู้ใช้/ร้าน            │
-│  [ชื่อ, เบอร์, อีเมล, ...]     │
-│  [แก้ไขข้อมูล]                 │
-└───────────────────────────────┘
-```
-
----
-
-## 4. User Flow หลัก
-
-**ลูกค้า:**
-1. สมัคร/ล็อกอิน
-2. ดูสินค้า → ใส่ตะกร้า → สั่งซื้อ
-3. ดูสถานะออเดอร์/แก้ไขโปรไฟล์
-
-**เจ้าของร้าน:**
-1. ล็อกอิน
-2. จัดการสินค้า (เพิ่ม/ลบ/แก้ไข)
-3. ดู/อัปเดตสถานะออเดอร์
-4. แชท/แจ้งเตือนลูกค้า
-5. แก้ไขโปรไฟล์ร้าน
-
----
-
-## 5. ธีม/รูปลักษณ์ (Theme/Look & Feel)
-
-- สีหลัก: น้ำตาลเข้ม (#4E342E), น้ำตาลกลาง (#8D6E63), ครีม (#FAF3EF)
-- ฟอนต์: Poppins (assets/fonts)
-- ปุ่ม: มุมโค้งมน, สีพื้นน้ำตาลกลาง ตัวอักษรขาว
-- ไอคอน: ใช้ Material Icons (เช่น ตะกร้า, โปรไฟล์, สินค้า)
-- รูปสินค้า: สี่เหลี่ยมมุมโค้ง, ขนาด 48–120px
-- สไตล์โดยรวม: อบอุ่น, สะอาด, เน้นความเป็นกันเองแบบโฮมเมด
-
----
-
-_หมายเหตุ: สามารถนำ wireframe นี้ไปวาดใน Figma หรือ Whimsical เพื่อความสวยงามและนำเสนอได้ต่อไป_
-
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
+## Resources
+- [Flutter documentation](https://docs.flutter.dev)
+- [Stripe Flutter SDK docs](https://stripe.com/docs/payments/accept-a-payment?platform=flutter)
+- [Firebase for Flutter](https://firebase.google.com/docs/flutter/setup)
+- [Opn/Omise PromptPay guide](https://www.omise.co/)
+- [Design tokens & สี](docs/styling_reference.md)
+- หากต้องการไอเดียเพิ่มเติมสำหรับ UI ดู mockups/wireframes เดิมที่แนบไว้ใน repo (commit history)
 
 - [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
 - [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)

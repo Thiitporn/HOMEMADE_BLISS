@@ -266,7 +266,7 @@ class _OwnerDashboardViewState extends State<OwnerDashboardView> {
   int _tabIndex = 0;
 
   final Color darkBrown = const Color(0xFF4E342E);
-  final Color mediumBrown = const Color(0xFF8D6E63);
+  final Color mediumBrown = const Color(0xFF8D6E63); // ต้องการเปลี่ยนธีมสำหรับเจ้าของร้าน ปรับค่าสีตรงนี้
   final List<Widget> pages = const [
   OwnerDashboardTab(),
   OwnerProductsTab(),
@@ -283,7 +283,7 @@ class _OwnerDashboardViewState extends State<OwnerDashboardView> {
         backgroundColor: const Color(0xFFFAF3EF),
         elevation: 0,
         title: Text(
-          'Owner Dashboard',
+          'Owner Dashboard', // เปลี่ยนชื่อข้อความนี้เมื่ออยากรีแบรนด์หน้าควบคุมร้าน
           style: TextStyle(color: darkBrown, fontWeight: FontWeight.bold),
         ),
       ),

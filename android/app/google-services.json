@@ -2,7 +2,7 @@
   "project_info": {
     "project_number": "499198293559",
     "project_id": "homemade-bliss-1bad8",
-    "storage_bucket": "homemade-bliss-1bad8.appspot.com"
+    "storage_bucket": "homemade-bliss-1bad8.firebasestorage.app"
   },
   "client": [
     {
@@ -10,6 +10,25 @@
         "mobilesdk_app_id": "1:499198293559:android:7ea529093c004ccd84b1b2",
         "android_client_info": {
           "package_name": "com.example.homemade_bliss"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-IPnudqEiPZBsCUHHNoNNTMFkhGXukI4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:499198293559:android:65eca005634aaec084b1b2",
+        "android_client_info": {
+          "package_name": "th.ac.rmuttt.ct.homemadebliss"
         }
       },
       "oauth_client": [],

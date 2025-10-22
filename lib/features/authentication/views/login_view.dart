@@ -160,6 +160,7 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     // ใช้โทนสีเดียวกับ signup
+  // ชุดสีหลักของหน้าล็อกอิน หากต้องการเปลี่ยนโทนสีให้ปรับค่าสีตรงนี้
     final Color darkBrown = const Color(0xFF4E342E);
     final Color mediumBrown = const Color(0xFF8D6E63);
   // final Color lightBrown = const Color(0xFFD7CCC8); // not used here
@@ -177,7 +178,7 @@ class _LoginViewState extends State<LoginView> {
             Icon(Icons.cookie, color: mediumBrown, size: 22),
             const SizedBox(width: 6),
             Text(
-              'Homemade Bliss',
+              'Homemade Bliss', // เปลี่ยนข้อความนี้เมื่อมีการอัปเดตชื่อแบรนด์บน AppBar
               style: TextStyle(
                 color: darkBrown,
                 fontWeight: FontWeight.bold,
@@ -198,7 +199,7 @@ class _LoginViewState extends State<LoginView> {
             children: [
               const SizedBox(height: 18),
               Text(
-                'Log in to your account',
+                'Log in to your account', // ปรับข้อความนี้เพื่อเปลี่ยนหัวข้อหลักของหน้า
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 22,
@@ -208,7 +209,7 @@ class _LoginViewState extends State<LoginView> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Please enter your details',
+                'Please enter your details', // ข้อความรอง อัปเดตได้หากต้องการอธิบายเพิ่มเติม
                 style: TextStyle(fontSize: 13, color: darkBrown.withOpacity(0.7)),
               ),
               const SizedBox(height: 28),

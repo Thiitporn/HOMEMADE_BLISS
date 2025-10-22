@@ -6,6 +6,12 @@
 			"type": "shell",
 			"command": "flutter pub add firebase_storage image_picker",
 			"group": "build"
+		},
+		{
+			"label": "Run Flutter app",
+			"type": "shell",
+			"command": "flutter run",
+			"group": "build"
 		}
 	]
 }

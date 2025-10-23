@@ -378,7 +378,66 @@ class OwnerDashboardTab extends StatelessWidget {
                   Icons.bar_chart,
                   Colors.blue,
                   () {
-                    // TODO: Navigate to sales report
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: const Text('รายงานยอดขาย'),
+                          content: SizedBox(
+                            width: 350,
+                            child: StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance.collection('orders').snapshots(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                final docs = snapshot.data?.docs ?? [];
+                                double totalRevenue = 0;
+                                Map<String, double> dailyRevenue = {};
+                                for (final doc in docs) {
+                                  final data = doc.data() as Map<String, dynamic>?;
+                                  if (data != null && data['totalPrice'] != null && data['createdAt'] != null) {
+                                    double price = 0;
+                                    final val = data['totalPrice'];
+                                    if (val is int) price = val.toDouble();
+                                    else if (val is double) price = val;
+                                    else if (val is String) price = double.tryParse(val) ?? 0;
+                                    totalRevenue += price;
+                                    final ts = data['createdAt'];
+                                    DateTime date;
+                                    if (ts is Timestamp) {
+                                      date = ts.toDate();
+                                    } else if (ts is DateTime) {
+                                      date = ts;
+                                    } else {
+                                      continue;
+                                    }
+                                    final key = "${date.year}-${date.month.toString().padLeft(2,'0')}-${date.day.toString().padLeft(2,'0')}";
+                                    dailyRevenue[key] = (dailyRevenue[key] ?? 0) + price;
+                                  }
+                                }
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('ยอดขายรวม: ฿${totalRevenue.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 12),
+                                    const Text('ยอดขายรายวัน:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    ...dailyRevenue.entries.map((e) => Text('${e.key}: ฿${e.value.toStringAsFixed(2)}')),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('ปิด'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
                   },
                 ),
               ),
@@ -418,34 +477,42 @@ class OwnerDashboardTab extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 24),
               const Spacer(),
-              StreamBuilder<QuerySnapshot>(
-                stream: _getStatStream(type),
-                builder: (context, snapshot) {
-                  if (type == 'revenue_today') {
+              if (type == 'revenue_today')
+                StreamBuilder<QuerySnapshot>(
+                  stream: _getStatStream(type),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(width: 40, height: 24, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+                    }
                     final docs = snapshot.data?.docs ?? [];
                     double revenue = 0;
                     for (final doc in docs) {
                       final data = doc.data() as Map<String, dynamic>?;
-                      if (data != null && data['totalPrice'] != null) {
+                      if (data != null && data['status'] == 'paid' && data['totalPrice'] != null) {
                         final val = data['totalPrice'];
                         if (val is int) revenue += val.toDouble();
                         else if (val is double) revenue += val;
                         else if (val is String) revenue += double.tryParse(val) ?? 0;
                       }
                     }
+                    final text = revenue > 0 ? 'ยอดขายวันนี้: ${revenue.toStringAsFixed(0)} บาท' : '0 บาท';
                     return Text(
-                      revenue.toStringAsFixed(0),
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
+                      text,
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
                     );
-                  } else {
+                  },
+                )
+              else
+                StreamBuilder<QuerySnapshot>(
+                  stream: _getStatStream(type),
+                  builder: (context, snapshot) {
                     final count = snapshot.data?.docs.length ?? 0;
                     return Text(
                       '$count',
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
                     );
-                  }
-                },
-              ),
+                  },
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -490,6 +557,15 @@ class OwnerDashboardTab extends StatelessWidget {
         return FirebaseFirestore.instance
             .collection('orders')
             .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+            .snapshots();
+      case 'revenue_today':
+        final today = DateTime.now();
+        final startOfDay = DateTime(today.year, today.month, today.day);
+        final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59, 999);
+        return FirebaseFirestore.instance
+            .collection('orders')
+            .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+            .where('createdAt', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
             .snapshots();
       case 'coupons':
         return FirebaseFirestore.instance

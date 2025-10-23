@@ -18,6 +18,7 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
+  bool isLoading = false;
 
   // ฟังก์ชันเปรียบเทียบ list ของ map (ต้องอยู่บนสุดของคลาส)
 
@@ -261,27 +262,38 @@ class _HomeViewState extends State<HomeView> {
                   flex: 7,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      color: const Color(0xFFF8F4F0),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: lightBrown, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.brown.shade100.withOpacity(0.13),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
-                    child: TextField(
-                      controller: searchController,
-                      decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.search, color: mediumBrown),
-                        hintText: 'Search Product',
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                      child: TextField(
+                        controller: searchController,
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF5D4037)),
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.search, color: mediumBrown, size: 18),
+                          hintText: 'Search Product',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF8D6E63)),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            searchQuery = value.trim();
+                          });
+                        },
                       ),
-                      onChanged: (value) {
-                        setState(() {
-                          searchQuery = value.trim();
-                        });
-                      },
                     ),
                   ),
                 ),
-                const Spacer(flex: 3),
               ],
             ),
           ),
@@ -308,15 +320,41 @@ class _HomeViewState extends State<HomeView> {
                   final selected = selectedCategory == i;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text('${categories[i]['th']} (${categories[i]['en']})'),
-                      selected: selected,
-                      onSelected: (_) => setState(() => selectedCategory = i),
-                      selectedColor: mediumBrown,
-                      backgroundColor: Colors.white,
-                      labelStyle: TextStyle(
-                        color: selected ? Colors.white : darkBrown,
-                        fontWeight: FontWeight.bold,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeInOut,
+                      decoration: BoxDecoration(
+                        color: selected ? mediumBrown : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: selected ? mediumBrown : Colors.brown.shade100, width: 1.2),
+                        boxShadow: selected
+                            ? [BoxShadow(color: mediumBrown.withOpacity(0.13), blurRadius: 6, offset: const Offset(0, 2))]
+                            : [],
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => setState(() => selectedCategory = i),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (selected)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: Icon(Icons.check, color: Colors.white, size: 16),
+                                ),
+                              Text(
+                                '${categories[i]['th']} (${categories[i]['en']})',
+                                style: TextStyle(
+                                  color: selected ? Colors.white : darkBrown,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -366,6 +404,12 @@ class _HomeViewState extends State<HomeView> {
                     final price = (data['price'] ?? 0).toDouble();
                     final imageUrl = (data['imageUrl'] ?? '') as String;
                     final stock = (data['stock'] ?? 0) as int;
+                    final variantsRaw = (data['variants'] ?? []) as List;
+                    final variants = variantsRaw.map((v) => {
+                      'name': v['name'],
+                      'price': (v['price'] ?? 0).toDouble(),
+                      'stock': v['stock'] ?? 0,
+                    }).toList();
 
                     Widget productImage() {
                       if (imageUrl.startsWith('http')) {
@@ -395,10 +439,12 @@ class _HomeViewState extends State<HomeView> {
                         border: Border.all(color: lightBrown, width: 1),
                       ),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const SizedBox(height: 8),
-                          Expanded(
+                          SizedBox(
+                            height: 110,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: productImage(),
@@ -409,7 +455,7 @@ class _HomeViewState extends State<HomeView> {
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: Text(
                               name,
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: darkBrown),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: darkBrown),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
@@ -418,7 +464,7 @@ class _HomeViewState extends State<HomeView> {
                           const SizedBox(height: 4),
                           Text(
                             '฿${price.toStringAsFixed(2)}',
-                            style: TextStyle(color: mediumBrown, fontWeight: FontWeight.bold, fontSize: 14),
+                            style: TextStyle(color: mediumBrown, fontWeight: FontWeight.bold, fontSize: 11),
                           ),
                           const SizedBox(height: 2),
                           if (stock <= 0)
@@ -426,33 +472,338 @@ class _HomeViewState extends State<HomeView> {
                               padding: EdgeInsets.only(bottom: 8),
                               child: Text('Out of stock', style: TextStyle(color: Colors.red, fontSize: 12)),
                             )
-                          else
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                              child: SizedBox(
-                                width: double.infinity,
-                                height: 36,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: mediumBrown,
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                    elevation: 0,
+                          else ...[
+                            if (variants.isNotEmpty)
+                              Center(
+                                child: SizedBox(
+                                  width: 110,
+                                  height: 30,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: mediumBrown,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                                    ),
+                                    onPressed: () async {
+                                      String? selectedVariantName;
+                                      int selectedQty = 1;
+                                      final selectedVariant = ValueNotifier<Map<String, dynamic>?>(null);
+                                      await showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        shape: const RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                                        ),
+                                        builder: (context) {
+                                          return Padding(
+                                            padding: EdgeInsets.only(
+                                              bottom: MediaQuery.of(context).viewInsets.bottom,
+                                              left: 16, right: 16, top: 24),
+                                            child: StatefulBuilder(
+                                              builder: (context, setState) {
+                                                return Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    // Drag indicator
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(top: 8, bottom: 8),
+                                                      child: Center(
+                                                        child: Container(
+                                                          width: 40,
+                                                          height: 4,
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.grey.shade300,
+                                                            borderRadius: BorderRadius.circular(2),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    // Header with icon
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 8),
+                                                      child: Row(
+                                                        children: [
+                                                          CircleAvatar(
+                                                            radius: 22,
+                                                            backgroundColor: Colors.brown.shade100,
+                                                            backgroundImage: imageUrl.isNotEmpty
+                                                                ? (imageUrl.startsWith('http')
+                                                                    ? NetworkImage(imageUrl)
+                                                                    : AssetImage(imageUrl)) as ImageProvider
+                                                                : null,
+                                                            child: imageUrl.isEmpty ? const Icon(Icons.image, color: Colors.brown, size: 28) : null,
+                                                          ),
+                                                          const SizedBox(width: 12),
+                                                          Expanded(
+                                                            child: Text(
+                                                              'เลือกตัวเลือกสินค้า',
+                                                              style: const TextStyle(
+                                                                fontWeight: FontWeight.bold,
+                                                                fontSize: 20,
+                                                                color: Color(0xFF5D4037),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    // Variant cards
+                                                    Padding(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                      child: Column(
+                                                        children: variants.map((v) {
+                                                          final isAvailable = v['stock'] > 0;
+                                                          final isSelected = selectedVariantName == v['name'];
+                                                          return AnimatedContainer(
+                                                            duration: const Duration(milliseconds: 200),
+                                                            curve: Curves.easeInOut,
+                                                            margin: const EdgeInsets.symmetric(vertical: 6),
+                                                            decoration: BoxDecoration(
+                                                              color: isSelected ? Colors.brown.shade50 : Colors.white,
+                                                              borderRadius: BorderRadius.circular(16),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Colors.brown.shade100.withOpacity(0.15),
+                                                                  blurRadius: 8,
+                                                                  offset: const Offset(0, 2),
+                                                                ),
+                                                              ],
+                                                              border: isSelected
+                                                                  ? Border.all(color: Colors.brown.shade300, width: 2)
+                                                                  : Border.all(color: Colors.transparent, width: 2),
+                                                            ),
+                                                            child: ListTile(
+                                                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                              title: Text(
+                                                                '${v['name']} ฿${v['price']}',
+                                                                style: TextStyle(
+                                                                  fontWeight: FontWeight.w600,
+                                                                  fontSize: 16,
+                                                                  color: isAvailable ? Colors.black : Colors.grey,
+                                                                ),
+                                                              ),
+                                                              subtitle: Row(
+                                                                children: [
+                                                                  Icon(Icons.inventory_2, size: 16, color: isAvailable ? Colors.brown : Colors.grey),
+                                                                  const SizedBox(width: 4),
+                                                                  Text(
+                                                                    'คงเหลือ ${v['stock']}',
+                                                                    style: TextStyle(
+                                                                      fontSize: 13,
+                                                                      color: isAvailable ? Colors.brown : Colors.grey,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              enabled: isAvailable,
+                                                              leading: AnimatedContainer(
+                                                                duration: const Duration(milliseconds: 200),
+                                                                curve: Curves.easeInOut,
+                                                                width: 28,
+                                                                height: 28,
+                                                                decoration: BoxDecoration(
+                                                                  color: isSelected ? Colors.brown.shade300 : Colors.brown.shade100,
+                                                                  shape: BoxShape.circle,
+                                                                  border: Border.all(color: isSelected ? Colors.brown : Colors.brown.shade100, width: 2),
+                                                                ),
+                                                                child: Center(
+                                                                  child: isSelected
+                                                                      ? const Icon(Icons.check, color: Colors.white, size: 18)
+                                                                      : const Icon(Icons.circle_outlined, color: Colors.brown, size: 18),
+                                                                ),
+                                                              ),
+                                                              onTap: isAvailable
+                                                                  ? () {
+                                                                      setState(() {
+                                                                        selectedVariantName = v['name'];
+                                                                        selectedVariant.value = v;
+                                                                        selectedQty = 1;
+                                                                      });
+                                                                    }
+                                                                  : null,
+                                                            ),
+                                                          );
+                                                        }).toList(),
+                                                      ),
+                                                    ),
+                                                    // Quantity selector
+                                                    if (selectedVariant.value != null) ...[
+                                                      Padding(
+                                                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                                        child: Row(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            GestureDetector(
+                                                              onTap: selectedQty > 1 ? () => setState(() => selectedQty--) : null,
+                                                              child: Container(
+                                                                width: 44,
+                                                                height: 44,
+                                                                decoration: BoxDecoration(
+                                                                  color: selectedQty > 1 ? Colors.brown.shade50 : Colors.grey.shade200,
+                                                                  borderRadius: BorderRadius.circular(22),
+                                                                ),
+                                                                child: const Icon(Icons.remove, color: Color(0xFF8D6E63)),
+                                                              ),
+                                                            ),
+                                                            Padding(
+                                                              padding: const EdgeInsets.symmetric(horizontal: 18),
+                                                              child: Container(
+                                                                width: 44,
+                                                                height: 44,
+                                                                alignment: Alignment.center,
+                                                                decoration: BoxDecoration(
+                                                                  color: Colors.brown.shade50,
+                                                                  borderRadius: BorderRadius.circular(22),
+                                                                ),
+                                                                child: Text('$selectedQty', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF5D4037))),
+                                                              ),
+                                                            ),
+                                                            GestureDetector(
+                                                              onTap: selectedQty < (selectedVariant.value!['stock'] < 10 ? selectedVariant.value!['stock'] : 10)
+                                                                  ? () => setState(() => selectedQty++)
+                                                                  : null,
+                                                              child: Container(
+                                                                width: 44,
+                                                                height: 44,
+                                                                decoration: BoxDecoration(
+                                                                  color: selectedQty < (selectedVariant.value!['stock'] < 10 ? selectedVariant.value!['stock'] : 10)
+                                                                      ? Colors.brown.shade50
+                                                                      : Colors.grey.shade200,
+                                                                  borderRadius: BorderRadius.circular(22),
+                                                                ),
+                                                                child: const Icon(Icons.add, color: Color(0xFF8D6E63)),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                    // Feedback
+                                                    if (selectedVariant.value == null)
+                                                      Padding(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                                        child: Text(
+                                                          'กรุณาเลือกตัวเลือกสินค้าก่อน',
+                                                          style: TextStyle(color: Colors.red.shade400, fontSize: 13),
+                                                        ),
+                                                      ),
+                                                    if (selectedVariant.value != null && selectedVariant.value!['stock'] == 0)
+                                                      Padding(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                                        child: Text(
+                                                          'สินค้าหมดสต็อก',
+                                                          style: TextStyle(color: Colors.red.shade400, fontSize: 13),
+                                                        ),
+                                                      ),
+                                                    // Action button
+                                                    Padding(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                      child: SizedBox(
+                                                        width: double.infinity,
+                                                        height: 48,
+                                                        child: ElevatedButton.icon(
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: mediumBrown,
+                                                            foregroundColor: Colors.white,
+                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                                            elevation: 0,
+                                                          ),
+                                                          icon: isLoading
+                                                              ? const SizedBox(
+                                                                  width: 22,
+                                                                  height: 22,
+                                                                  child: CircularProgressIndicator(
+                                                                    color: Colors.white,
+                                                                    strokeWidth: 2.5,
+                                                                  ),
+                                                                )
+                                                              : const Icon(Icons.shopping_cart_outlined, size: 22),
+                                                          label: const Text(
+                                                            'เพิ่มลงตะกร้า',
+                                                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                                          ),
+                                                          onPressed: selectedVariant.value != null && selectedVariant.value!['stock'] > 0 && !isLoading
+                                                              ? () async {
+                                                                  setState(() => isLoading = true);
+                                                                  await Future.delayed(const Duration(milliseconds: 600));
+                                                                  cart.addItem(
+                                                                    id: filteredDocs[i].id + '_' + selectedVariant.value!['name'],
+                                                                    name: name + ' ' + selectedVariant.value!['name'],
+                                                                    price: selectedVariant.value!['price'],
+                                                                    imageAsset: imageUrl.startsWith('http') ? null : imageUrl,
+                                                                    imageUrl: imageUrl.startsWith('http') ? imageUrl : null,
+                                                                    qty: selectedQty,
+                                                                  );
+                                                                  Navigator.pop(context);
+                                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                                    SnackBar(content: Text('เพิ่มลงตะกร้าแล้ว')),
+                                                                  );
+                                                                  setState(() {
+                                                                    selectedNav = 1;
+                                                                    isLoading = false;
+                                                                  });
+                                                                }
+                                                              : null,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: const Text(
+                                      'เพิ่มในตะกร้า',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
                                   ),
-                                  onPressed: () {
-                                    cart.addItem(
-                                      id: filteredDocs[i].id,
-                                      name: name,
-                                      price: price,
-                                      imageAsset: imageUrl.startsWith('http') ? null : imageUrl,
-                                      imageUrl: imageUrl.startsWith('http') ? imageUrl : null,
-                                    );
-                                    setState(() => selectedNav = 1);
-                                  },
-                                  child: const Text('Add to Cart', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                 ),
                               ),
-                            ),
+                            if (variants.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  height: 40,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: mediumBrown,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      elevation: 0,
+                                    ),
+                                    onPressed: () {
+                                      cart.addItem(
+                                        id: filteredDocs[i].id,
+                                        name: name,
+                                        price: price,
+                                        imageAsset: imageUrl.startsWith('http') ? null : imageUrl,
+                                        imageUrl: imageUrl.startsWith('http') ? imageUrl : null,
+                                      );
+                                      setState(() => selectedNav = 1);
+                                    },
+                                    child: const Text(
+                                      'เพิ่มในตะกร้า',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ],
                       ),
                     );

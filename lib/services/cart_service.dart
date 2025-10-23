@@ -2,7 +2,7 @@
 // TODO(doc): ใช้ CartService.addToCart สำหรับเพิ่มสินค้าลงตะกร้าแบบเลือกตัวเลือก
 
 import 'package:flutter/material.dart';
-import '../models/product.dart';
+import '../features/products/models/product_model.dart';
 import '../models/cart_item.dart';
 
 class CartService extends ChangeNotifier {

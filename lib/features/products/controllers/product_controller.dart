@@ -24,8 +24,11 @@ class ProductController extends ChangeNotifier {
       description: 'คุกกี้นุ่มโฮมเมด',
       price: 59.0,
       imageUrl: 'https://via.placeholder.com/150',
-      variants: ['ช็อกโกแลต', 'แมคคาเดเมีย'],
-      stock: 10,
+      variants: [
+        ProductVariant(name: 'ช็อกโกแลต', price: 59.0, stock: 5),
+        ProductVariant(name: 'แมคคาเดเมีย', price: 69.0, stock: 3),
+      ],
+      stock: 8,
     ),
     Product(
       id: '2',
@@ -33,8 +36,11 @@ class ProductController extends ChangeNotifier {
       description: 'บราวนี่เข้มข้น',
       price: 79.0,
       imageUrl: 'https://via.placeholder.com/150',
-      variants: ['อัลมอนด์', 'ช็อกโกแลต'],
-      stock: 8,
+      variants: [
+        ProductVariant(name: 'อัลมอนด์', price: 79.0, stock: 4),
+        ProductVariant(name: 'ช็อกโกแลต', price: 89.0, stock: 2),
+      ],
+      stock: 6,
     ),
   ];
 
@@ -45,9 +51,11 @@ class ProductController extends ChangeNotifier {
     try {
       final snap = await _db.collection('products').get();
       _products.clear();
-      _products.addAll(snap.docs.map((doc) =>
-        Product.fromFirestore(doc.data(), doc.id)
-      ));
+      _products.addAll(snap.docs.map((doc) {
+        final product = Product.fromFirestore(doc.data(), doc.id);
+        debugPrint('Product: ${product.name}, variants: ${product.variants.map((v) => v.name).toList()}');
+        return product;
+      }));
       notifyListeners();
     } catch (e) {
       debugPrint('Load products error: $e');

@@ -831,97 +831,170 @@ class _HomeViewState extends State<HomeView> {
     Widget buildOrdersTab() {
       if (cart.items.isEmpty) {
         return Center(
-          child: Text('Your cart is empty', style: TextStyle(color: darkBrown)),
+          child: Text('Your cart is empty', style: TextStyle(color: darkBrown, fontSize: 16)),
         );
       }
       return ListView.builder(
         itemCount: cart.items.length + 1,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
         itemBuilder: (context, index) {
           if (index == cart.items.length) {
             return Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text('Total: ฿${cart.totalPrice.toStringAsFixed(2)}',
                       textAlign: TextAlign.right,
-                      style: TextStyle(fontWeight: FontWeight.bold, color: darkBrown, fontSize: 16)),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8D6E63), foregroundColor: Colors.white),
-                    onPressed: () {
-                      // ไปหน้า checkout
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CheckoutView(
-                            totalPrice: cart.totalPrice,
-                            items: cart.items.map((e) => {
-                              'id': e.id,
-                              'name': e.name,
-                              'price': e.price,
-                              'quantity': e.quantity,
-                              'imageAsset': e.imageAsset,
-                              'imageUrl': e.imageUrl,
-                            }).toList(),
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF8D6E63), fontSize: 18)),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8D6E63),
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                        shadowColor: Colors.brown.shade100,
+                        minimumSize: const Size.fromHeight(44),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CheckoutView(
+                              totalPrice: cart.totalPrice,
+                              items: cart.items.map((e) => {
+                                'id': e.id,
+                                'name': e.name,
+                                'price': e.price,
+                                'quantity': e.quantity,
+                                'imageAsset': e.imageAsset,
+                                'imageUrl': e.imageUrl,
+                              }).toList(),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    child: const Text('Place Order'),
+                        );
+                      },
+                      child: const Text('ยืนยันการสั่งซื้อ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
                   ),
                 ],
               ),
             );
           }
           final item = cart.items[index];
-          return ListTile(
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: () {
-                if (item.imageAsset != null && item.imageAsset!.isNotEmpty) {
-                  return Image.asset(
-                    item.imageAsset!,
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => const Icon(Icons.image),
-                  );
-                }
-                if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
-                  return Image.network(
-                    item.imageUrl!,
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => Image.asset(
-                      'assets/images/logo.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                    ),
-                  );
-                }
-                return const Icon(Icons.image);
-              }(),
-            ),
-            title: Text(item.name, style: TextStyle(color: darkBrown, fontWeight: FontWeight.bold)),
-            subtitle: Text('฿${item.price} x ${item.quantity}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(onPressed: () => cart.removeOne(item.id), icon: const Icon(Icons.remove_circle_outline)),
-                IconButton(
-                  onPressed: () => cart.addItem(
-                    id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    imageAsset: item.imageAsset,
-                    imageUrl: item.imageUrl,
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: Colors.brown.shade100.withOpacity(0.10), blurRadius: 6, offset: const Offset(0, 2))],
+              ),
+              child: ListTile(
+                leading: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.brown.shade50,
                   ),
-                  icon: const Icon(Icons.add_circle_outline),
+                  child: ClipOval(
+                    child: () {
+                      if (item.imageAsset != null && item.imageAsset!.isNotEmpty) {
+                        return Image.asset(
+                          item.imageAsset!,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          errorBuilder: (c, e, s) => const Icon(Icons.image, size: 48),
+                        );
+                      }
+                      if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
+                        return Image.network(
+                          item.imageUrl!,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          errorBuilder: (c, e, s) => Image.asset(
+                            'assets/images/logo.png',
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      }
+                      return const Icon(Icons.image, size: 48);
+                    }(),
+                  ),
                 ),
-                IconButton(onPressed: () => cart.removeAll(item.id), icon: const Icon(Icons.delete_outline)),
-              ],
+                title: Text(
+                  item.name,
+                  style: const TextStyle(color: Color(0xFF5D4037), fontWeight: FontWeight.bold, fontSize: 13),
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
+                ),
+                subtitle: Text('฿${item.price} x ${item.quantity}', style: TextStyle(color: Colors.brown.shade300, fontSize: 12)),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => cart.removeOne(item.id),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.brown.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.remove_circle_outline, color: Color(0xFF8D6E63), size: 22),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => cart.addItem(
+                          id: item.id,
+                          name: item.name,
+                          price: item.price,
+                          imageAsset: item.imageAsset,
+                          imageUrl: item.imageUrl,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.brown.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.add_circle_outline, color: Color(0xFF8D6E63), size: 22),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => cart.removeAll(item.id),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.brown.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.delete_outline, color: Color(0xFF8D6E63), size: 22),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         },

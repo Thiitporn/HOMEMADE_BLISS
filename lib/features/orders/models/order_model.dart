@@ -50,7 +50,7 @@ class OrderModel {
     'coupon': coupon,
     'slipUrl': slipUrl,
     'status': status,
-    'createdAt': createdAt,
+    'createdAt': Timestamp.fromDate(createdAt),
   };
 
   factory OrderModel.fromMap(Map<String, dynamic> map) => OrderModel(

@@ -80,11 +80,7 @@ class _PaymentViewState extends State<PaymentView> {
               expirationHintText: 'MM/YY',
               cvcHintText: 'CVC',
             ),
-            const SizedBox(height: 8),
-            Text(
-              'ทดสอบ: ใช้เลขบัตร 4242 4242 4242 4242',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
-            ),
+            
             const SizedBox(height: 32),
             
             // ปุ่มชำระเงิน
@@ -127,11 +123,12 @@ class _PaymentViewState extends State<PaymentView> {
       print('กำลังเรียก backend...');
       // 1. ขอ clientSecret จาก backend
       final response = await http.post(
-        Uri.parse('http://172.20.10.11:3000/create-stripe-payment-intent'),
+        Uri.parse('http://172.20.10.20:3000/create-stripe-payment-intent'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'amount': widget.orderData['finalTotal'],
           'orderId': widget.orderData['id'],
+          'currency': 'thb',
         }),
       );
       print('Response status: ${response.statusCode}');
@@ -165,24 +162,77 @@ class _PaymentViewState extends State<PaymentView> {
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           final orderId = widget.orderData['id'].toString();
-          final order = OrderModel(
-            id: orderId,
-            userId: user.uid,
-            name: widget.orderData['name'] ?? '',
-            phone: widget.orderData['phone'] ?? '',
-            address: widget.orderData['address'] ?? '',
-            items: List<Map<String, dynamic>>.from(widget.orderData['items'] ?? []),
-            total: (widget.orderData['total'] ?? 0).toDouble(),
-            discount: (widget.orderData['discount'] ?? 0).toDouble(),
-            finalTotal: (widget.orderData['finalTotal'] ?? 0).toDouble(),
-            coupon: widget.orderData['coupon'],
-            slipUrl: '',
-            status: OrderStatus.paid,
-            createdAt: DateTime.now(), // Will be overwritten by serverTimestamp below
-          );
-          await OrdersController().createOrder(order);
+          // Clean items as before
+          final cleanedItems = (widget.orderData['items'] as List)
+              .map((item) {
+                final map = item is Map<String, dynamic>
+                    ? Map<String, dynamic>.from(item)
+                    : (item as dynamic).toMap() as Map<String, dynamic>;
+                map.forEach((k, v) {
+                  if (v is String) map[k] = v.trim();
+                });
+                map.removeWhere((k, v) => v == null || k == null || k.toString().trim().isEmpty || (v is! String && v is! num && v is! bool));
+                if (map.containsKey('imageUrl')) {
+                  var url = map['imageUrl'];
+                  if (url is String) {
+                    url = url.replaceAll(RegExp(r'\s+'), '');
+                    final uri = Uri.tryParse(url);
+                    final isValidUrl = url.startsWith('http') && uri != null && uri.hasAbsolutePath;
+                    if (!isValidUrl) {
+                      map.remove('imageUrl');
+                    } else {
+                      map['imageUrl'] = url;
+                    }
+                  } else {
+                    map.remove('imageUrl');
+                  }
+                }
+                if (map.containsKey('id')) {
+                  final idVal = map['id'];
+                  if (idVal is String) map['id'] = idVal.replaceAll(RegExp(r'\s+'), '');
+                }
+                if (map.containsKey('price')) {
+                  final price = map['price'];
+                  if (price is num && (!price.isFinite || price.isNaN)) map['price'] = 0;
+                }
+                if (map.containsKey('quantity')) {
+                  final qty = map['quantity'];
+                  if (qty is! int || qty <= 0) map['quantity'] = 1;
+                }
+                if (map.containsKey('createdAt')) map.remove('createdAt');
+                return map;
+              })
+              .toList();
+          // Build Firestore order data
+          final orderData = <String, dynamic>{
+            'id': orderId,
+            'userId': user.uid,
+            'name': widget.orderData['name'] ?? '',
+            'phone': widget.orderData['phone'] ?? '',
+            'address': widget.orderData['address'] ?? '',
+            'items': cleanedItems,
+            'total': ((widget.orderData['total'] ?? 0) is num && (widget.orderData['total'] ?? 0).isFinite)
+                ? (widget.orderData['total'] ?? 0).toDouble()
+                : 0.0,
+            'discount': ((widget.orderData['discount'] ?? 0) is num && (widget.orderData['discount'] ?? 0).isFinite)
+                ? (widget.orderData['discount'] ?? 0).toDouble()
+                : 0.0,
+            'finalTotal': ((widget.orderData['finalTotal'] ?? 0) is num && (widget.orderData['finalTotal'] ?? 0).isFinite)
+                ? (widget.orderData['finalTotal'] ?? 0).toDouble()
+                : 0.0,
+            'coupon': widget.orderData['coupon'],
+            'status': 'paid',
+            'createdAt': FieldValue.serverTimestamp(),
+          };
+          // Only include slipUrl if not empty
+          if ((widget.orderData['slipUrl'] ?? '').toString().isNotEmpty) {
+            orderData['slipUrl'] = widget.orderData['slipUrl'];
+          }
+          print('DEBUG: Order data to Firestore:');
+          print(orderData);
+          await FirebaseFirestore.instance.collection('orders').doc(orderId).set(orderData);
           // ลด stock สินค้าทุกชิ้นในออเดอร์
-          for (final item in order.items) {
+          for (final item in orderData['items'] as List) {
             final productId = item['id'] ?? item['productId'];
             final qty = item['quantity'] ?? 1;
             if (productId != null && qty != null) {

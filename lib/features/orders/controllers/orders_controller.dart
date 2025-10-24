@@ -1,11 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
+import 'dart:convert';
 
 class OrdersController {
   final _ordersRef = FirebaseFirestore.instance.collection('orders');
 
   Future<void> createOrder(OrderModel order) async {
-    await _ordersRef.doc(order.id).set(order.toMap());
+    final data = order.toMap();
+    print('DEBUG: Order data to Firestore:');
+    try {
+      print(JsonEncoder.withIndent('  ').convert(data));
+    } catch (_) {
+      print(data);
+    }
+    await _ordersRef.doc(order.id).set(data);
   }
 
   Stream<List<OrderModel>> userOrders(String userId) {

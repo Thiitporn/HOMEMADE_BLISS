@@ -24,9 +24,14 @@ app.get('/stripe-publishable-key', (req, res) => {
 // สร้าง PaymentIntent สำหรับบัตรเครดิต (Stripe)
 app.post('/create-stripe-payment-intent', async (req, res) => {
   try {
-    const { amount, currency } = req.body;
+  console.log('Received body:', req.body);
+  const { amount, currency } = req.body;
+  const amountSatang = Math.round(Number(amount) * 100);
+  console.log('Amount for Stripe:', amountSatang);
+  console.log('Received body:', req.body);
+  console.log('Amount for Stripe:', amountSatang);
     const paymentIntent = await stripe.paymentIntents.create({
-      amount,
+      amount: amountSatang,
       currency,
       automatic_payment_methods: { enabled: true },
     });

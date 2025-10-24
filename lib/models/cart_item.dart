@@ -17,4 +17,18 @@ class CartItem {
     required this.qty,
   });
   String get uniqueKey => '$productId::${variantName ?? ""}';
+
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'productId': productId,
+      'productName': productName,
+      'imageUrl': imageUrl,
+      'variantName': variantName,
+      'unitPrice': unitPrice,
+      'qty': qty,
+    };
+    // Remove any key with null value
+    map.removeWhere((key, value) => value == null);
+    return map;
+  }
 }

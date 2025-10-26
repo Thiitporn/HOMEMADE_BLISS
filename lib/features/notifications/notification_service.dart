@@ -10,6 +10,7 @@ class NotificationModel {
   final String? status;
   final bool read;
   final DateTime createdAt;
+  final String? payload;
 
   NotificationModel({
     required this.id,
@@ -20,6 +21,7 @@ class NotificationModel {
     this.status,
     required this.read,
     required this.createdAt,
+    this.payload,
   });
 
   factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
@@ -33,6 +35,7 @@ class NotificationModel {
       status: data['status'],
       read: data['read'] ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      payload: data['payload'] as String?,
     );
   }
 }
@@ -119,5 +122,39 @@ class NotificationService {
         .collection('notifications')
         .doc(notificationId)
         .delete();
+  }
+
+  /// สร้างการแจ้งเตือนใหม่และบันทึกลง Firestore (ใช้ซ้ำได้ทุกที่ในแอป)
+  static Future<String?> addNotification({
+    required String userId,
+    required String title,
+    required String body,
+    String type = 'general',
+    String? orderId,
+    String? status,
+    String? payload,
+    Map<String, dynamic>? extra,
+  }) async {
+    final doc = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .doc();
+
+    final data = <String, dynamic>{
+      'title': title,
+      'body': body,
+      'orderId': orderId,
+      'type': type,
+      'status': status,
+      'payload': payload,
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      ...?extra,
+    };
+
+    data.removeWhere((key, value) => value == null);
+    await doc.set(data, SetOptions(merge: true));
+    return doc.id;
   }
 }

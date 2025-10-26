@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../common/dialog_utils.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -96,7 +97,17 @@ class _LoginViewState extends State<LoginView> {
             ),
             actions: [
               TextButton(
-                onPressed: sending ? null : () => Navigator.of(context).pop(),
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final confirmed = await showConfirmDialog(
+                          context,
+                          'ยกเลิก',
+                          'คุณต้องการยกเลิกการกู้คืนรหัสผ่านหรือไม่?',
+                        );
+                        if (!confirmed) return;
+                        Navigator.of(context).pop();
+                      },
                 child: const Text('Cancel'),
               ),
               ElevatedButton(

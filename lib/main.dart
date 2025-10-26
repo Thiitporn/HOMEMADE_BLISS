@@ -12,6 +12,7 @@ import 'features/orders/views/payment_view.dart';
 import 'features/orders/views/success_view.dart';
 import 'common/stripe_config.dart';
 import 'common/notification_service.dart';
+import 'common/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,7 @@ void main() async {
   await StripeConfig.ensureInitialized();
   // Initialize notifications (Android will request permission on 13+)
   await NotificationService.init();
+  await PushNotificationService.init();
   runApp(
     MultiProvider(
       providers: [

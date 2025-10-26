@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -18,9 +20,61 @@ enum _ReportRange {
   final String label;
 }
 
+enum _TrendGrouping {
+  daily('รายวัน'),
+  weekly('รายสัปดาห์'),
+  monthly('รายเดือน');
+
+  const _TrendGrouping(this.label);
+
+  final String label;
+}
+
+class _ProductSalesData {
+  _ProductSalesData({
+    required this.id,
+    required this.name,
+    double revenue = 0,
+    double quantity = 0,
+  })  : revenue = revenue,
+        quantity = quantity;
+
+  final String id;
+  final String name;
+  double revenue;
+  double quantity;
+}
+
+class _TrendPoint {
+  const _TrendPoint({
+    required this.period,
+    required this.label,
+    required this.revenue,
+  });
+
+  final DateTime period;
+  final String label;
+  final double revenue;
+}
+
+class _PaymentSummary {
+  const _PaymentSummary({
+    required this.orderId,
+    required this.amount,
+    required this.status,
+    this.createdAt,
+  });
+
+  final String orderId;
+  final double amount;
+  final String status;
+  final DateTime? createdAt;
+}
+
 class _SalesReportViewState extends State<SalesReportView> {
   _ReportRange _range = _ReportRange.sevenDays;
   String _selectedStatus = 'all';
+  _TrendGrouping _trendGrouping = _TrendGrouping.daily;
 
   DateTime get _startDate {
     final now = DateTime.now();
@@ -95,6 +149,109 @@ class _SalesReportViewState extends State<SalesReportView> {
     'rejected': 'ปฏิเสธ',
     'unknown': 'ไม่ทราบสถานะ',
   };
+
+  Map<String, _ProductSalesData> _buildProductAggregates(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final result = <String, _ProductSalesData>{};
+    for (final doc in docs) {
+      final data = doc.data();
+      final items = data['items'];
+      if (items is! List) continue;
+      for (final raw in items) {
+        if (raw is! Map) continue;
+        final item = raw.map((key, value) => MapEntry(key.toString(), value));
+        final id = (item['id'] ?? item['productId'] ?? item['name'] ?? doc.id)
+            .toString();
+        final name = (item['name'] ?? 'ไม่ระบุชื่อสินค้า').toString();
+        final quantityRaw = item['quantity'];
+        final quantity = quantityRaw is num
+            ? quantityRaw.toDouble()
+            : double.tryParse(quantityRaw?.toString() ?? '') ?? 0;
+        final unitPrice = _toDouble(
+          item['price'] ?? item['finalPrice'] ?? item['subTotal'],
+        );
+        final lineTotal = unitPrice * quantity;
+        final entry = result.putIfAbsent(
+          id,
+          () => _ProductSalesData(id: id, name: name),
+        );
+        entry.revenue += lineTotal;
+        entry.quantity += quantity;
+      }
+    }
+    return result;
+  }
+
+  List<_TrendPoint> _buildTrendData(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    _TrendGrouping grouping,
+  ) {
+    final totals = <DateTime, double>{};
+    for (final doc in docs) {
+      final data = doc.data();
+      final createdRaw = data['createdAt'];
+      DateTime? created;
+      if (createdRaw is Timestamp) {
+        created = createdRaw.toDate();
+      } else if (createdRaw is DateTime) {
+        created = createdRaw;
+      }
+      if (created == null) continue;
+      final key = _groupKey(created, grouping);
+      final revenue = _toDouble(
+        data['finalTotal'] ?? data['total'] ?? data['totalPrice'],
+      );
+      totals.update(key, (value) => value + revenue, ifAbsent: () => revenue);
+    }
+    final entries = totals.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return entries
+        .map(
+          (entry) => _TrendPoint(
+            period: entry.key,
+            label: _trendLabel(entry.key, grouping),
+            revenue: entry.value,
+          ),
+        )
+        .toList();
+  }
+
+  DateTime _groupKey(DateTime date, _TrendGrouping grouping) {
+    switch (grouping) {
+      case _TrendGrouping.daily:
+        return DateTime(date.year, date.month, date.day);
+      case _TrendGrouping.weekly:
+        final diff = date.weekday - DateTime.monday;
+        final startOfWeek = date.subtract(Duration(days: diff < 0 ? 6 : diff));
+        return DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+      case _TrendGrouping.monthly:
+        return DateTime(date.year, date.month);
+    }
+  }
+
+  String _trendLabel(DateTime date, _TrendGrouping grouping) {
+    switch (grouping) {
+      case _TrendGrouping.daily:
+        return '${date.day}/${date.month}';
+      case _TrendGrouping.weekly:
+        return 'ส. ${date.day}/${date.month}';
+      case _TrendGrouping.monthly:
+        final shortYear = date.year % 100;
+        return '${date.month}/$shortYear';
+    }
+  }
+
+  bool _isPaidStatus(String status) {
+    const paidStatuses = {
+      'paid',
+      'completed',
+      'shipping',
+      'delivering',
+      'preparing',
+    };
+    return paidStatuses.contains(status);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -250,6 +407,113 @@ class _SalesReportViewState extends State<SalesReportView> {
                     ? 'ไม่มีคำสั่งซื้อในช่วงเวลาที่เลือก'
                     : 'ไม่มีคำสั่งซื้อในสถานะนี้';
 
+                final productAggregatesMap =
+                    _buildProductAggregates(filteredDocs);
+                final productAggregates = productAggregatesMap.values
+                    .where((product) => product.revenue > 0)
+                    .toList()
+                  ..sort(
+                    (a, b) => b.revenue.compareTo(a.revenue),
+                  );
+                _ProductSalesData? highestProduct;
+                for (final product in productAggregates) {
+                  if (product.revenue > 0) {
+                    highestProduct = product;
+                    break;
+                  }
+                }
+                _ProductSalesData? lowestProduct;
+                for (final product in productAggregates.reversed) {
+                  if (product.revenue > 0) {
+                    lowestProduct = product;
+                    break;
+                  }
+                }
+                final topProduct = highestProduct;
+                final bottomProduct = lowestProduct;
+
+                final trendPoints =
+                    _buildTrendData(filteredDocs, _trendGrouping);
+
+                final paidOrders = filteredDocs
+                    .where((doc) =>
+                        _isPaidStatus(doc.data()['status']?.toString() ?? ''))
+                    .toList();
+                final unpaidOrders = filteredDocs
+                    .where((doc) =>
+                        !_isPaidStatus(doc.data()['status']?.toString() ?? ''))
+                    .toList();
+
+                List<_PaymentSummary> _mapOrders(
+                  List<QueryDocumentSnapshot<Map<String, dynamic>>> orders,
+                ) {
+                  return orders.map((doc) {
+                    final data = doc.data();
+                    final createdRaw = data['createdAt'];
+                    DateTime? created;
+                    if (createdRaw is Timestamp) {
+                      created = createdRaw.toDate();
+                    } else if (createdRaw is DateTime) {
+                      created = createdRaw;
+                    }
+                    final amount = _toDouble(
+                      data['finalTotal'] ??
+                          data['total'] ??
+                          data['totalPrice'],
+                    );
+                    final status = data['status']?.toString() ?? 'unknown';
+                    return _PaymentSummary(
+                      orderId: doc.id,
+                      amount: amount,
+                      status: status,
+                      createdAt: created,
+                    );
+                  }).toList();
+                }
+
+                final paidSummaries = _mapOrders(paidOrders);
+                final unpaidSummaries = _mapOrders(unpaidOrders);
+
+                final totalPaid = paidSummaries.fold<double>(
+                  0,
+                  (sum, order) => sum + order.amount,
+                );
+                final totalUnpaid = unpaidSummaries.fold<double>(
+                  0,
+                  (sum, order) => sum + order.amount,
+                );
+
+                final overviewMetrics = [
+                  _MetricTileData(
+                    title: 'ยอดขายรวม',
+                    value: '฿${totalRevenue.toStringAsFixed(2)}',
+                    description: 'ช่วงเวลาที่เลือก',
+                    icon: Icons.payments_outlined,
+                    gradient: const [Color(0xFFDED2C4), Color(0xFFF6EFE7)],
+                  ),
+                  _MetricTileData(
+                    title: 'คำสั่งซื้อทั้งหมด',
+                    value: '$totalOrders',
+                    description: 'รวมทุกสถานะ',
+                    icon: Icons.receipt_long_outlined,
+                    gradient: const [Color(0xFFC9E3F9), Color(0xFFE8F3FF)],
+                  ),
+                  _MetricTileData(
+                    title: 'ชำระเงินแล้ว',
+                    value: '${paidOrders.length}',
+                    description: 'นับออเดอร์ที่จ่ายแล้ว',
+                    icon: Icons.verified_outlined,
+                    gradient: const [Color(0xFFD9C6F4), Color(0xFFF1E7FF)],
+                  ),
+                  _MetricTileData(
+                    title: 'รอการชำระ',
+                    value: '${unpaidOrders.length}',
+                    description: 'ต้องติดตามเพิ่มเติม',
+                    icon: Icons.pending_actions_outlined,
+                    gradient: const [Color(0xFFD4EFD8), Color(0xFFEFFAEF)],
+                  ),
+                ];
+
                 return RefreshIndicator(
                   onRefresh: () async => setState(() {}),
                   color: const Color(0xFF6B705C),
@@ -257,262 +521,311 @@ class _SalesReportViewState extends State<SalesReportView> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _SummaryTile(
-                              title: 'ยอดขายรวม',
-                              value: '฿${totalRevenue.toStringAsFixed(2)}',
-                              icon: Icons.payments_outlined,
-                              iconBackground: const Color(0xFF6B705C),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: _SummaryTile(
-                              title: 'จำนวนคำสั่งซื้อ',
-                              value: '$totalOrders',
-                              icon: Icons.receipt_long_outlined,
-                              iconBackground: const Color(0xFFB08968),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'สถานะคำสั่งซื้อ',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: const Color(0xFF3C3A37),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      if (statusCounts.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: const Color(0xFFE3DAD1)),
-                          ),
-                          child: const Text('ยังไม่มีคำสั่งซื้อในช่วงเวลานี้'),
-                        )
-                      else
-                        Column(
+                      _SectionCard(
+                        title: 'ภาพรวมยอดขาย',
+                        subtitle:
+                            'ข้อมูลตั้งแต่ ${_formatDate(startDate)} ถึงวันนี้',
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: visibleFilters.map((entry) {
-                                  final status = entry.key;
-                                  final isSelected = status == _selectedStatus;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: ChoiceChip(
-                                      label: Text(
-                                        '${_statusLabel(status)} (${entry.value})',
-                                      ),
-                                      selected: isSelected,
-                                      onSelected: (_) => setState(
-                                        () => _selectedStatus = status,
-                                      ),
-                                      backgroundColor: const Color(0xFFF0ECE6),
-                                      selectedColor: const Color(0xFF6B705C),
-                                      labelStyle:
-                                          theme.textTheme.bodySmall?.copyWith(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : const Color(0xFF514C47),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        side: BorderSide(
-                                          color: isSelected
-                                              ? const Color(0xFF6B705C)
-                                              : Colors.transparent,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ...statusCounts.entries.map((entry) {
-                              final color = _statusColor(entry.key);
-                              final ratio = totalStatusCount == 0
-                                  ? 0.0
-                                  : entry.value / totalStatusCount;
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: const Color(0xFFE9E1D8),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: _ReportRange.values.map((range) {
+                                final selected = range == _range;
+                                return ChoiceChip(
+                                  label: Text(range.label),
+                                  selected: selected,
+                                  onSelected: (_) => setState(() {
+                                    _range = range;
+                                  }),
+                                  backgroundColor: const Color(0xFFEDE7DF),
+                                  selectedColor: const Color(0xFF6B705C),
+                                  labelStyle:
+                                      theme.textTheme.bodyMedium?.copyWith(
+                                    color: selected
+                                        ? Colors.white
+                                        : const Color(0xFF514C47),
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 10,
-                                          height: 10,
-                                          decoration: BoxDecoration(
-                                            color: color,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            _statusLabel(entry.key),
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF3C3A37),
-                                            ),
-                                          ),
-                                        ),
-                                        Text(
-                                          '${entry.value} ออเดอร์',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                            color: const Color(0xFF7A746D),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: LinearProgressIndicator(
-                                        value: ratio,
-                                        minHeight: 6,
-                                        backgroundColor:
-                                            const Color(0xFFF1ECE6),
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                          color,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 18),
+                            _OverviewMetrics(metrics: overviewMetrics),
                           ],
                         ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'คำสั่งซื้อทั้งหมด',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: const Color(0xFF3C3A37),
-                          fontWeight: FontWeight.w700,
-                        ),
                       ),
-                      const SizedBox(height: 10),
-                      if (displayDocs.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE9E1D8)),
-                          ),
-                          child: Text(emptyOrdersMessage),
-                        )
-                      else
-                        ...displayDocs.map((doc) {
-                          final data = doc.data();
-                          final createdRaw = data['createdAt'];
-                          DateTime? created;
-                          if (createdRaw is Timestamp) {
-                            created = createdRaw.toDate();
-                          } else if (createdRaw is DateTime) {
-                            created = createdRaw;
-                          }
-                          final status =
-                              data['status']?.toString() ?? 'unknown';
-                          final finalTotal = _toDouble(
-                            data['finalTotal'] ??
-                                data['total'] ??
-                                data['totalPrice'],
-                          );
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border:
-                                  Border.all(color: const Color(0xFFE9E1D8)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'ออเดอร์ #${doc.id}',
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF3C3A37),
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                      _SectionCard(
+                        title: 'สถานะคำสั่งซื้อ',
+                        child: statusCounts.isEmpty
+                            ? const _EmptyPlaceholder(
+                                message: 'ยังไม่มีคำสั่งซื้อในช่วงเวลานี้',
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: visibleFilters.map((entry) {
+                                        final status = entry.key;
+                                        final isSelected =
+                                            status == _selectedStatus;
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(right: 8),
+                                          child: ChoiceChip(
+                                            label: Text(
+                                              '${_statusLabel(status)} (${entry.value})',
+                                            ),
+                                            selected: isSelected,
+                                            onSelected: (_) => setState(() {
+                                              _selectedStatus = status;
+                                            }),
+                                            backgroundColor:
+                                                const Color(0xFFF3EEE9),
+                                            selectedColor:
+                                                const Color(0xFF6B705C),
+                                            labelStyle: theme
+                                                .textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : const Color(0xFF514C47),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ...statusCounts.entries.map((entry) {
+                                    final color = _statusColor(entry.key);
+                                    final ratio = totalStatusCount == 0
+                                        ? 0.0
+                                        : entry.value / totalStatusCount;
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
+                                      child: _StatusSummaryTile(
+                                        label: _statusLabel(entry.key),
+                                        count: entry.value,
+                                        ratio: ratio,
+                                        color: color,
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                      ),
+                      _SectionCard(
+                        title: 'ยอดขายแยกตามสินค้า',
+                        child: productAggregates.isEmpty
+                            ? const _EmptyPlaceholder(
+                                message: 'ยังไม่มีข้อมูลยอดขายสินค้าในช่วงนี้',
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final cards = <Widget>[];
+                                      if (topProduct != null) {
+                                        cards.add(
+                                          _ProductHighlightCard(
+                                            title: 'สินค้าขายดี',
+                                            product: topProduct,
+                                            accent: const Color(0xFF6B705C),
+                                          ),
+                                        );
+                                      }
+                                      if (bottomProduct != null &&
+                                          bottomProduct.id !=
+                                              topProduct?.id) {
+                                        cards.add(
+                                          _ProductHighlightCard(
+                                            title: 'สินค้าควรผลักดันเพิ่ม',
+                                            product: bottomProduct,
+                                            accent: const Color(0xFFB08968),
+                                          ),
+                                        );
+                                      }
+                                      if (cards.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                    final width = constraints.maxWidth;
+                    final columns = width >= 720
+                      ? 3
+                      : width >= 340
+                        ? 2
+                        : 1;
+                                      const spacing = 16.0;
+                                      final itemWidth = columns == 1
+                                          ? width
+                                          : (width - spacing * (columns - 1)) /
+                                              columns;
+                                      return Wrap(
+                                        spacing: spacing,
+                                        runSpacing: spacing,
+                                        children: cards
+                                            .map(
+                                              (card) => SizedBox(
+                                                width: columns == 1
+                                                    ? width
+                                                    : itemWidth,
+                                                child: card,
+                                              ),
+                                            )
+                                            .toList(),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFDFBF8),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: const Color(0xFFE9E1D8),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _statusColor(status)
-                                            .withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Text(
-                                        _statusLabels[status] ?? status,
-                                        style:
-                                            theme.textTheme.bodySmall?.copyWith(
-                                          color: _statusColor(status),
-                                          fontWeight: FontWeight.w600,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'รายละเอียดสินค้า (Top 5)',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF3C3A37),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (created != null) ...[
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    _formatDate(created),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: const Color(0xFF7A746D),
+                                        const SizedBox(height: 12),
+                                        ...productAggregates
+                                            .take(5)
+                                            .map(
+                                              (product) => _ProductBar(
+                                                data: product,
+                                                maxRevenue:
+                                                    productAggregates.first
+                                                        .revenue,
+                                              ),
+                                            )
+                                            .toList(),
+                                      ],
                                     ),
                                   ),
                                 ],
-                                const SizedBox(height: 12),
-                                Text(
-                                  'ยอดสุทธิ ฿${finalTotal.toStringAsFixed(2)}',
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    color: const Color(0xFF3C3A37),
+                              ),
+                      ),
+                      _SectionCard(
+                        title: 'แนวโน้มยอดขาย',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: _TrendGrouping.values.map((grouping) {
+                                final selected = grouping == _trendGrouping;
+                                return ChoiceChip(
+                                  label: Text(grouping.label),
+                                  selected: selected,
+                                  onSelected: (_) => setState(() {
+                                    _trendGrouping = grouping;
+                                  }),
+                                  backgroundColor: const Color(0xFFF3EEE9),
+                                  selectedColor: const Color(0xFF6B705C),
+                                  labelStyle:
+                                      theme.textTheme.bodySmall?.copyWith(
+                                    color: selected
+                                        ? Colors.white
+                                        : const Color(0xFF514C47),
                                     fontWeight: FontWeight.w600,
                                   ),
-                                ),
-                              ],
+                                );
+                              }).toList(),
                             ),
-                          );
-                        }),
+                            const SizedBox(height: 16),
+                            _SalesTrendChart(points: trendPoints),
+                          ],
+                        ),
+                      ),
+                      _SectionCard(
+                        title: 'สถานะการชำระเงิน',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _PaymentStatusSummary(
+                              title: 'ชำระเงินแล้ว',
+                              amount: totalPaid,
+                              orders: paidSummaries,
+                              accentColor: const Color(0xFF6B705C),
+                              emptyMessage: 'ยังไม่มีออเดอร์ที่ชำระแล้ว',
+                            ),
+                            const SizedBox(height: 16),
+                            _PaymentStatusSummary(
+                              title: 'รอการชำระ',
+                              amount: totalUnpaid,
+                              orders: unpaidSummaries,
+                              accentColor: const Color(0xFFB08968),
+                              emptyMessage: 'ยอดขายที่ยังไม่ได้รับการชำระว่างอยู่',
+                            ),
+                          ],
+                        ),
+                      ),
+                      _SectionCard(
+                        title: 'คำสั่งซื้อทั้งหมด',
+                        child: displayDocs.isEmpty
+                            ? _EmptyPlaceholder(message: emptyOrdersMessage)
+                            : Column(
+                                children: List.generate(displayDocs.length,
+                                    (index) {
+                                  final doc = displayDocs[index];
+                                  final data = doc.data();
+                                  final createdRaw = data['createdAt'];
+                                  DateTime? created;
+                                  if (createdRaw is Timestamp) {
+                                    created = createdRaw.toDate();
+                                  } else if (createdRaw is DateTime) {
+                                    created = createdRaw;
+                                  }
+                                  final status =
+                                      data['status']?.toString() ?? 'unknown';
+                                  final finalTotal = _toDouble(
+                                    data['finalTotal'] ??
+                                        data['total'] ??
+                                        data['totalPrice'],
+                                  );
+                                  final isLast =
+                                      index == displayDocs.length - 1;
+                                  return Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: isLast ? 0 : 12,
+                                    ),
+                                    child: _OrderTile(
+                                      orderId: doc.id,
+                                      statusLabel:
+                                          _statusLabels[status] ?? status,
+                                      statusColor: _statusColor(status),
+                                      createdText: created == null
+                                          ? null
+                                          : _formatDate(created),
+                                      total: finalTotal,
+                                    ),
+                                  );
+                                }),
+                              ),
+                      ),
                     ],
                   ),
                 );
@@ -525,18 +838,141 @@ class _SalesReportViewState extends State<SalesReportView> {
   }
 }
 
-class _SummaryTile extends StatelessWidget {
-  const _SummaryTile({
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.title,
+    required this.child,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE9E1D8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: const Color(0xFF3C3A37),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF7A746D),
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyPlaceholder extends StatelessWidget {
+  const _EmptyPlaceholder({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F4EE),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE9E1D8)),
+      ),
+      child: Text(
+        message,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: const Color(0xFF7A746D),
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricTileData {
+  const _MetricTileData({
     required this.title,
     required this.value,
     required this.icon,
-    required this.iconBackground,
+    required this.gradient,
+    this.description,
   });
 
   final String title;
   final String value;
   final IconData icon;
-  final Color iconBackground;
+  final List<Color> gradient;
+  final String? description;
+}
+
+class _OverviewMetrics extends StatelessWidget {
+  const _OverviewMetrics({required this.metrics});
+
+  final List<_MetricTileData> metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        const spacing = 16.0;
+        final columns = availableWidth >= 320 ? 2 : 1;
+        final itemWidth = columns == 1
+            ? availableWidth
+            : (availableWidth - spacing) / 2;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: metrics.map((metric) {
+            final tileWidth = columns == 1 ? availableWidth : itemWidth;
+            final tileHeight = tileWidth * 1.12;
+            return SizedBox(
+              width: tileWidth,
+              height: tileHeight,
+              child: _MetricTile(data: metric),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.data});
+
+  final _MetricTileData data;
 
   @override
   Widget build(BuildContext context) {
@@ -544,14 +980,18 @@ class _SummaryTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE9E1D8)),
+        gradient: LinearGradient(
+          colors: data.gradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.22)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -559,30 +999,581 @@ class _SummaryTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
-              color: iconBackground,
-              borderRadius: BorderRadius.circular(14),
+              color: Colors.white.withOpacity(0.32),
+              borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(icon, color: Colors.white, size: 20),
+            child: Icon(
+              data.icon,
+              color: const Color(0xFF3C3A37),
+              size: 18,
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
+          Text(
+            data.value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF3C3A37),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const Spacer(),
+          Text(
+            data.title,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFF514C47),
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (data.description != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              data.description!,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: const Color(0xFF7A746D),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusSummaryTile extends StatelessWidget {
+  const _StatusSummaryTile({
+    required this.label,
+    required this.count,
+    required this.ratio,
+    required this.color,
+  });
+
+  final String label;
+  final int count;
+  final double ratio;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final progress = ratio.clamp(0.0, 1.0).toDouble();
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withOpacity(0.18), color.withOpacity(0.05)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF3C3A37),
+                  ),
+                ),
+              ),
+              Text(
+                '$count ออเดอร์',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF7A746D),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: Colors.white.withOpacity(0.4),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductHighlightCard extends StatelessWidget {
+  const _ProductHighlightCard({
+    required this.title,
+    required this.product,
+    required this.accent,
+  });
+
+  final String title;
+  final _ProductSalesData product;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [accent.withOpacity(0.14), Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withOpacity(0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
             title,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF7A746D),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF3C3A37),
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
+            product.name,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'ยอดขาย ฿${product.revenue.toStringAsFixed(2)} • ${product.quantity.toStringAsFixed(0)} ชิ้น',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF7A746D),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrderTile extends StatelessWidget {
+  const _OrderTile({
+    required this.orderId,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.total,
+    this.createdText,
+  });
+
+  final String orderId;
+  final String statusLabel;
+  final Color statusColor;
+  final double total;
+  final String? createdText;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDFBF8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE9E1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'ออเดอร์ #$orderId',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF3C3A37),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (createdText != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              createdText!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF7A746D),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Text(
+            'ยอดสุทธิ ฿${total.toStringAsFixed(2)}',
+            style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: const Color(0xFF3C3A37),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ProductBar extends StatelessWidget {
+  const _ProductBar({
+    required this.data,
+    required this.maxRevenue,
+  });
+
+  final _ProductSalesData data;
+  final double maxRevenue;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ratio = maxRevenue <= 0 ? 0.0 : data.revenue / maxRevenue;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  data.name,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF3C3A37),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '฿${data.revenue.toStringAsFixed(2)}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF7A746D),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: ratio.clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: const Color(0xFFF1ECE6),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFF6B705C),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${data.quantity.toStringAsFixed(0)} ชิ้น',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: const Color(0xFF96918B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SalesTrendChart extends StatelessWidget {
+  const _SalesTrendChart({required this.points});
+
+  final List<_TrendPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (points.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F4EE),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            'ยังไม่มีข้อมูลยอดขายในช่วงนี้',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFF7A746D),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final displayPoints = points.length > 12
+        ? points.sublist(points.length - 12)
+        : points;
+    final maxValue = displayPoints.fold<double>(
+      0,
+      (value, point) => math.max(value, point.revenue),
+    );
+
+    if (maxValue <= 0) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F4EE),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            'กำลังรอข้อมูลยอดขายเพิ่มเติม',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFF7A746D),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 220,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxBarHeight = math.max(constraints.maxHeight - 90, 0);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (final point in displayPoints)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          '฿${point.revenue.toStringAsFixed(0)}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: const Color(0xFF7A746D),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          height: (point.revenue / maxValue)
+                              .clamp(0.0, 1.0) *
+                              maxBarHeight,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF6B705C), Color(0xFFB7B7A4)],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          point.label,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: const Color(0xFF3C3A37),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PaymentStatusSummary extends StatelessWidget {
+  const _PaymentStatusSummary({
+    required this.title,
+    required this.amount,
+    required this.orders,
+    required this.accentColor,
+    required this.emptyMessage,
+  });
+
+  final String title;
+  final double amount;
+  final List<_PaymentSummary> orders;
+  final Color accentColor;
+  final String emptyMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: accentColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF3C3A37),
+                ),
+              ),
+            ),
+            Text(
+              'รวม ฿${amount.toStringAsFixed(2)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF7A746D),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (orders.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F4EE),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              emptyMessage,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF7A746D),
+              ),
+            ),
+          )
+        else
+          Column(
+            children: orders.take(5).map((order) {
+              final created = order.createdAt;
+              final createdText = created == null
+                  ? '-'
+                  : '${created.day}/${created.month}/${created.year}';
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFDFBF8),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFEAE2D9)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '#${order.orderId}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF3C3A37),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            createdText,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: const Color(0xFF96918B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accentColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        order.status,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: accentColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '฿${order.amount.toStringAsFixed(2)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF3C3A37),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+      ],
     );
   }
 }

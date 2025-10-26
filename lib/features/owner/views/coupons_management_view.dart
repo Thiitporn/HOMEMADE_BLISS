@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../common/dialog_utils.dart';
 
 class CouponsManagementView extends StatefulWidget {
   const CouponsManagementView({super.key});
@@ -114,6 +115,12 @@ class _CouponsManagementViewState extends State<CouponsManagementView> {
                           icon: const Icon(Icons.save),
                           label: const Text('บันทึกคูปอง'),
                           onPressed: () async {
+                            final confirmed = await showConfirmDialog(
+                              context,
+                              'บันทึกคูปอง',
+                              'คุณต้องการบันทึกคูปองนี้หรือไม่?',
+                            );
+                            if (!confirmed) return;
                             if (!formKey.currentState!.validate()) return;
                             
                             await FirebaseFirestore.instance.collection('coupons').add({
@@ -232,6 +239,12 @@ class _CouponsManagementViewState extends State<CouponsManagementView> {
                             .doc(doc.id)
                             .update({'isActive': !isActive});
                       } else if (value == 'delete') {
+                        final confirmed = await showConfirmDialog(
+                          context,
+                          'ลบคูปอง',
+                          'คุณต้องการลบคูปองนี้จริงหรือไม่?',
+                        );
+                        if (!confirmed) return;
                         await FirebaseFirestore.instance
                             .collection('coupons')
                             .doc(doc.id)

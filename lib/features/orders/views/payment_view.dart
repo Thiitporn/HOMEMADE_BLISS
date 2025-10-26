@@ -39,63 +39,117 @@ class _PaymentViewState extends State<PaymentView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ชำระเงินด้วยบัตรเครดิต'),
-        backgroundColor: Colors.brown[700],
+        backgroundColor: const Color(0xFF6D4C41),
+        elevation: 0,
       ),
+      backgroundColor: const Color(0xFFF7F3F0),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ยอดเงิน
+            // Card: Payment Summary
             Card(
-              elevation: 2,
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              color: Colors.white,
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('ยอดที่ต้องชำระ', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                    const SizedBox(height: 8),
-                    Text(
-                      '฿${order['finalTotal'].toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.brown[700]),
+                    Row(
+                      children: [
+                        Icon(Icons.receipt_long, color: Color(0xFF8D6E63), size: 28),
+                        SizedBox(width: 10),
+                        Text('สรุปยอดชำระ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total:', style: TextStyle(fontSize: 16, color: Colors.black87)),
+                        Text('฿${order['total'].toStringAsFixed(2)}', style: TextStyle(fontSize: 16, color: Colors.black87)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Discount:', style: TextStyle(fontSize: 16, color: Colors.green)),
+                        Text('-฿${order['discount'].toStringAsFixed(2)}', style: TextStyle(fontSize: 16, color: Colors.green)),
+                      ],
+                    ),
+                    const Divider(height: 28, thickness: 1.2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Final Total:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
+                        Text('฿${order['finalTotal'].toStringAsFixed(2)}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            
-            // ข้อมูลบัตร
-            const Text('ข้อมูลบัตรเครดิต', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            CardField(
-              onCardChanged: (card) {
-                setState(() => _card = card);
-              },
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-              ),
-              style: const TextStyle(fontSize: 16),
-              numberHintText: '4242 4242 4242 4242',
-              expirationHintText: 'MM/YY',
-              cvcHintText: 'CVC',
-            ),
-            
             const SizedBox(height: 32),
-            
+            // Card: Credit Card Info
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: Color(0xFFF3E5E1),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.credit_card, color: Color(0xFF8D6E63), size: 22),
+                        SizedBox(width: 8),
+                        Text('ข้อมูลบัตรเครดิต', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    CardField(
+                      onCardChanged: (card) {
+                        setState(() => _card = card);
+                      },
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                      ),
+                      style: const TextStyle(fontSize: 16, letterSpacing: 1.2),
+                      numberHintText: '4242 4242 4242 4242',
+                      expirationHintText: 'MM/YY',
+                      cvcHintText: 'CVC',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 36),
             // ปุ่มชำระเงิน
             _loading
                 ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton.icon(
-                    icon: const Icon(Icons.credit_card, size: 24),
-                    label: const Text('ชำระเงิน', style: TextStyle(fontSize: 18)),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(56),
-                      backgroundColor: Colors.brown[700],
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                : SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.lock, size: 26),
+                      label: const Text('ชำระเงิน', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6D4C41),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                        shadowColor: Colors.brown.withOpacity(0.3),
+                      ),
+                      onPressed: (_card?.complete == true && !_loading) ? _payWithCard : null,
                     ),
-                    onPressed: (_card?.complete == true && !_loading) ? _payWithCard : null,
                   ),
           ],
         ),

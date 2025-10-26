@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../notification_service.dart';
+import '../notification_service.dart' as in_app;
 import '../../orders/views/order_history_view.dart';
+import '../../../common/notification_service.dart' as local_notifications;
 
 class NotificationsView extends StatelessWidget {
   const NotificationsView({Key? key}) : super(key: key);
@@ -17,7 +18,7 @@ class NotificationsView extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.done_all),
             onPressed: () async {
-              await NotificationService.markAllAsRead();
+              await in_app.NotificationService.markAllAsRead();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -32,8 +33,8 @@ class NotificationsView extends StatelessWidget {
         ],
       ),
       backgroundColor: const Color(0xFFF8F4E1),
-      body: StreamBuilder<List<NotificationModel>>(
-        stream: NotificationService.getNotifications(),
+  body: StreamBuilder<List<in_app.NotificationModel>>(
+        stream: in_app.NotificationService.getNotifications(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -75,7 +76,7 @@ class NotificationsView extends StatelessWidget {
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, NotificationModel notification) {
+  Widget _buildNotificationCard(BuildContext context, in_app.NotificationModel notification) {
     final Color darkBrown = const Color(0xFF74512D);
     final timeAgo = _getTimeAgo(notification.createdAt);
 
@@ -92,7 +93,7 @@ class NotificationsView extends StatelessWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       onDismissed: (_) {
-        NotificationService.deleteNotification(notification.id);
+        in_app.NotificationService.deleteNotification(notification.id);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('ลบการแจ้งเตือนแล้ว'),
@@ -109,11 +110,13 @@ class NotificationsView extends StatelessWidget {
           onTap: () async {
             // ทำเครื่องหมายว่าอ่านแล้ว
             if (!notification.read) {
-              await NotificationService.markAsRead(notification.id);
+              await in_app.NotificationService.markAsRead(notification.id);
             }
 
             // ถ้ามี orderId ให้ไปหน้าประวัติคำสั่งซื้อ
-            if (notification.orderId != null && context.mounted) {
+            if (notification.payload != null) {
+              local_notifications.NotificationService.handlePayload(notification.payload);
+            } else if (notification.orderId != null && context.mounted) {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const OrderHistoryView(),

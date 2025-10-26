@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../common/dialog_utils.dart';
 
 class EditProfileView extends StatefulWidget {
   const EditProfileView({Key? key}) : super(key: key);
@@ -135,7 +136,15 @@ class _EditProfileViewState extends State<EditProfileView> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _saveProfile,
+                      onPressed: () async {
+                        final confirmed = await showConfirmDialog(
+                          context,
+                          'บันทึกข้อมูล',
+                          'คุณต้องการบันทึกข้อมูลนี้หรือไม่?',
+                        );
+                        if (!confirmed) return;
+                        await _saveProfile();
+                      },
                       child: const Text('บันทึก'),
                     ),
                   ),

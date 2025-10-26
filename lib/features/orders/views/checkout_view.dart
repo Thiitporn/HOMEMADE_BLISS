@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'payment_view.dart';
+import '../../../common/dialog_utils.dart';
 
 class CheckoutView extends StatefulWidget {
   final double totalPrice;
@@ -380,7 +381,13 @@ class _CheckoutViewState extends State<CheckoutView> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       shadowColor: Colors.brown.shade200,
                     ),
-                    onPressed: () {
+                    onPressed: () async {
+                      final confirmed = await showConfirmDialog(
+                        context,
+                        'ยืนยันการสั่งซื้อ',
+                        'คุณต้องการยืนยันการสั่งซื้อหรือไม่?',
+                      );
+                      if (!confirmed) return;
                       if (_formKey.currentState?.validate() ?? false) {
                         final orderId = DateTime.now().millisecondsSinceEpoch.toString();
                         Navigator.of(context).push(
@@ -391,7 +398,9 @@ class _CheckoutViewState extends State<CheckoutView> {
                                 'name': _nameController.text,
                                 'phone': _phoneController.text,
                                 'address': _addressController.text,
-                                'items': widget.items.map((item) => item is Map<String, dynamic> ? item : (item as dynamic).toMap()).toList(),
+                                'items': widget.items
+                                    .map((item) => item is Map<String, dynamic> ? item : (item as dynamic).toMap())
+                                    .toList(),
                                 'total': widget.totalPrice,
                                 'discount': _discount,
                                 'finalTotal': widget.totalPrice - _discount,

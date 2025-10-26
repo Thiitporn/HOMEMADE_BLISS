@@ -6,6 +6,7 @@ import 'edit_profile_view.dart';
 import '../../cart/cart_controller.dart';
 import '../../orders/views/checkout_view.dart';
 import '../../orders/views/order_history_view.dart';
+import '../../../common/dialog_utils.dart';
 
 
 // หมวดหมู่จะดึงจาก Firestore จริง (distinct category/categoryTh)
@@ -859,7 +860,13 @@ class _HomeViewState extends State<HomeView> {
                         shadowColor: Colors.brown.shade100,
                         minimumSize: const Size.fromHeight(44),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
+                        final confirmed = await showConfirmDialog(
+                          context,
+                          'ยืนยันการสั่งซื้อ',
+                          'คุณต้องการยืนยันการสั่งซื้อหรือไม่?',
+                        );
+                        if (!confirmed) return;
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => CheckoutView(
@@ -981,7 +988,15 @@ class _HomeViewState extends State<HomeView> {
                       color: Colors.transparent,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () => cart.removeAll(item.id),
+                        onTap: () async {
+                          final confirmed = await showConfirmDialog(
+                            context,
+                            'ลบสินค้า',
+                            'คุณต้องการลบสินค้านี้จริงหรือไม่?',
+                          );
+                          if (!confirmed) return;
+                          cart.removeAll(item.id);
+                        },
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
@@ -1011,7 +1026,15 @@ class _HomeViewState extends State<HomeView> {
             subtitle: const Text('View and edit your information'),
             trailing: IconButton(
               icon: const Icon(Icons.logout),
-              onPressed: () async => FirebaseAuth.instance.signOut(),
+              onPressed: () async {
+                final confirmed = await showConfirmDialog(
+                  context,
+                  'ออกจากระบบ',
+                  'คุณต้องการออกจากระบบหรือไม่?',
+                );
+                if (!confirmed) return;
+                await FirebaseAuth.instance.signOut();
+              },
             ),
           ),
           const Divider(),
@@ -1027,7 +1050,13 @@ class _HomeViewState extends State<HomeView> {
           ListTile(
             leading: const Icon(Icons.edit),
             title: const Text('แก้ไขโปรไฟล์'),
-            onTap: () {
+            onTap: () async {
+              final confirmed = await showConfirmDialog(
+                context,
+                'แก้ไขโปรไฟล์',
+                'คุณต้องการแก้ไขโปรไฟล์นี้ใช่หรือไม่?',
+              );
+              if (!confirmed) return;
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const EditProfileView()),
               );
@@ -1061,6 +1090,12 @@ class _HomeViewState extends State<HomeView> {
           IconButton(
             icon: const Icon(Icons.logout, color: Color(0xFF4E342E)),
             onPressed: () async {
+              final confirmed = await showConfirmDialog(
+                context,
+                'ออกจากระบบ',
+                'คุณต้องการออกจากระบบหรือไม่?',
+              );
+              if (!confirmed) return;
               await FirebaseAuth.instance.signOut();
               // หลังจาก sign out จะกลับไปหน้า Login อัตโนมัติ
             },

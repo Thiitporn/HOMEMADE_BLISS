@@ -5,14 +5,44 @@ import '../models/product_model.dart';
 /// ตัวจัดการสินค้า (ProductController)
 class ProductController extends ChangeNotifier {
   /// ลด stock สินค้าแบบ static (เรียกใช้จากที่ไหนก็ได้)
-  static Future<void> decrementStock(String productId, int qty) async {
+  static Future<void> decrementStock(String productId, int qty, {String? variantName}) async {
     final db = FirebaseFirestore.instance;
     final docRef = db.collection('products').doc(productId);
     await db.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
-      final currentStock = (snapshot.data()?['stock'] ?? 0) as int;
-      final newStock = currentStock - qty;
-      transaction.update(docRef, {'stock': newStock < 0 ? 0 : newStock});
+      if (!snapshot.exists) return;
+  final Map<String, dynamic> data = snapshot.data() ?? <String, dynamic>{};
+
+      final rawStock = data['stock'];
+      final currentStock = rawStock is num ? rawStock.toInt() : 0;
+      final nextStock = (currentStock - qty).clamp(0, 1 << 30);
+
+      final updates = <String, dynamic>{'stock': nextStock};
+
+      final targetVariant = variantName?.trim();
+      if (targetVariant != null && targetVariant.isNotEmpty && data['variants'] is List) {
+        final variants = (data['variants'] as List)
+            .whereType<Map<dynamic, dynamic>>()
+            .map((variant) => variant.map((key, value) => MapEntry(key.toString(), value)))
+            .toList(growable: false);
+
+        final index = variants.indexWhere(
+          (variant) => (variant['name'] ?? '').toString().trim() == targetVariant,
+        );
+
+        if (index >= 0) {
+          final variantData = Map<String, dynamic>.from(variants[index]);
+          final rawVariantStock = variantData['stock'];
+          final variantStock = rawVariantStock is num ? rawVariantStock.toInt() : 0;
+          variantData['stock'] = (variantStock - qty).clamp(0, 1 << 30);
+
+          final updatedVariants = List<Map<String, dynamic>>.from(variants);
+          updatedVariants[index] = variantData;
+          updates['variants'] = updatedVariants;
+        }
+      }
+
+      transaction.update(docRef, updates);
     });
   }
   final _db = FirebaseFirestore.instance;

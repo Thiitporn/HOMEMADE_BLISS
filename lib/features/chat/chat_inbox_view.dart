@@ -8,7 +8,10 @@ class ChatInboxView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ownerUid = 'homemade_bliss_owner';
+  final owner = FirebaseAuth.instance.currentUser;
+  const legacyOwnerUid = 'homemade_bliss_owner';
+  final ownerUid = owner?.uid ?? legacyOwnerUid;
+  final ownerFilters = {ownerUid, legacyOwnerUid}.toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text('ข้อความลูกค้า', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -18,9 +21,13 @@ class ChatInboxView extends StatelessWidget {
       ),
       backgroundColor: const Color(0xFFF8F4E1),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('chats')
-            .where('ownerUid', isEqualTo: ownerUid)
+        stream: (ownerFilters.length == 1
+                ? FirebaseFirestore.instance
+                    .collection('chats')
+                    .where('ownerUid', isEqualTo: ownerFilters.first)
+                : FirebaseFirestore.instance
+                    .collection('chats')
+                    .where('ownerUid', whereIn: ownerFilters))
             .orderBy('lastTimestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -47,15 +54,25 @@ class ChatInboxView extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () {
-                    Navigator.of(context).push(
+                  onTap: () async {
+                    final currentOwner = FirebaseAuth.instance.currentUser;
+                    final result = await Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => ChatView(
                           chatId: chatId,
                           peerName: customerName,
+                          isOwner: true,
+                          ownerUid: currentOwner?.uid,
+                          ownerDisplayName: currentOwner?.displayName,
                         ),
                       ),
                     );
+                    if (!context.mounted) return;
+                    if (result == 'deleted') {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('ลบแชทแล้ว')),
+                      );
+                    }
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),

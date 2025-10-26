@@ -53,19 +53,49 @@ class OrderModel {
     'createdAt': Timestamp.fromDate(createdAt),
   };
 
-  factory OrderModel.fromMap(Map<String, dynamic> map) => OrderModel(
-    id: map['id'],
-    userId: map['userId'],
-    name: map['name'],
-    phone: map['phone'],
-    address: map['address'],
-    items: List<Map<String, dynamic>>.from(map['items'] ?? []),
-    total: (map['total'] ?? 0).toDouble(),
-    discount: (map['discount'] ?? 0).toDouble(),
-    finalTotal: (map['finalTotal'] ?? 0).toDouble(),
-    coupon: map['coupon'],
-    slipUrl: map['slipUrl'] ?? '',
-    status: map['status'] ?? OrderStatus.pending,
-    createdAt: (map['createdAt'] as Timestamp).toDate(),
-  );
+  factory OrderModel.fromMap(Map<String, dynamic> map) {
+    final createdAtRaw = map['createdAt'];
+    DateTime createdAt;
+    if (createdAtRaw is Timestamp) {
+      createdAt = createdAtRaw.toDate();
+    } else if (createdAtRaw is DateTime) {
+      createdAt = createdAtRaw;
+    } else if (createdAtRaw is String) {
+      createdAt = DateTime.tryParse(createdAtRaw) ?? DateTime.now();
+    } else {
+      createdAt = DateTime.now();
+    }
+
+    String _stringOrEmpty(dynamic value) => value == null ? '' : value.toString();
+
+    final items = <Map<String, dynamic>>[];
+    final rawItems = map['items'];
+    if (rawItems is Iterable) {
+      for (final raw in rawItems) {
+        if (raw is Map) {
+          items.add(
+            raw.map((key, value) => MapEntry(key.toString(), value)),
+          );
+        }
+      }
+    }
+
+    return OrderModel(
+      id: _stringOrEmpty(map['id']),
+      userId: _stringOrEmpty(map['userId']),
+      name: _stringOrEmpty(map['name']),
+      phone: _stringOrEmpty(map['phone']),
+      address: _stringOrEmpty(map['address']),
+      items: items,
+      total: (map['total'] is num) ? (map['total'] as num).toDouble() : double.tryParse('${map['total']}') ?? 0,
+      discount: (map['discount'] is num) ? (map['discount'] as num).toDouble() : double.tryParse('${map['discount']}') ?? 0,
+      finalTotal: (map['finalTotal'] is num)
+          ? (map['finalTotal'] as num).toDouble()
+          : double.tryParse('${map['finalTotal']}') ?? 0,
+      coupon: (map['coupon']?.toString().trim().isEmpty ?? true) ? null : map['coupon'].toString().trim(),
+      slipUrl: _stringOrEmpty(map['slipUrl']),
+      status: _stringOrEmpty(map['status']).isEmpty ? OrderStatus.pending : map['status'].toString(),
+      createdAt: createdAt,
+    );
+  }
 }

@@ -4,13 +4,12 @@ import '../../cart/cart_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../../../common/stripe_config.dart';
 import '../../../common/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/order_model.dart';
-import '../controllers/orders_controller.dart';
 import '../../products/controllers/product_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -26,6 +25,9 @@ class PaymentView extends StatefulWidget {
 class _PaymentViewState extends State<PaymentView> {
   bool _loading = false;
   CardFieldInputDetails? _card;
+
+  static const _envStripeBackendUrl = String.fromEnvironment('STRIPE_BACKEND_URL', defaultValue: '');
+  static const _envBackendUrl = String.fromEnvironment('BACKEND_BASE_URL', defaultValue: '');
   
   @override
   void dispose() {
@@ -44,74 +46,74 @@ class _PaymentViewState extends State<PaymentView> {
       ),
       backgroundColor: const Color(0xFFF7F3F0),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 18.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Card: Payment Summary
-            Card(
-              elevation: 6,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              color: Colors.white,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.receipt_long, color: Color(0xFF8D6E63), size: 28),
-                        SizedBox(width: 10),
-                        Text('สรุปยอดชำระ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Total:', style: TextStyle(fontSize: 16, color: Colors.black87)),
-                        Text('฿${order['total'].toStringAsFixed(2)}', style: TextStyle(fontSize: 16, color: Colors.black87)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Discount:', style: TextStyle(fontSize: 16, color: Colors.green)),
-                        Text('-฿${order['discount'].toStringAsFixed(2)}', style: TextStyle(fontSize: 16, color: Colors.green)),
-                      ],
-                    ),
-                    const Divider(height: 28, thickness: 1.2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Final Total:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
-                        Text('฿${order['finalTotal'].toStringAsFixed(2)}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
-                      ],
-                    ),
-                  ],
+              // Card: Payment Summary
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.receipt_long, color: Color(0xFF8D6E63), size: 24),
+                          SizedBox(width: 8),
+                          Text('สรุปยอดชำระ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF6D4C41))),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total:', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                          Text('฿${order['total'].toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Discount:', style: TextStyle(fontSize: 14, color: Colors.green)),
+                          Text('-฿${order['discount'].toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: Colors.green)),
+                        ],
+                      ),
+                      const Divider(height: 24, thickness: 1.1),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Final Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
+                          Text('฿${order['finalTotal'].toStringAsFixed(2)}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF6D4C41))),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 26),
             // Card: Credit Card Info
             Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              color: Color(0xFFF3E5E1),
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              color: const Color(0xFFF3E5E1),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.credit_card, color: Color(0xFF8D6E63), size: 22),
-                        SizedBox(width: 8),
-                        Text('ข้อมูลบัตรเครดิต', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
+                        Icon(Icons.credit_card, color: Color(0xFF8D6E63), size: 20),
+                        SizedBox(width: 6),
+                        Text('ข้อมูลบัตรเครดิต', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF6D4C41))),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     CardField(
                       onCardChanged: (card) {
                         setState(() => _card = card);
@@ -120,9 +122,9 @@ class _PaymentViewState extends State<PaymentView> {
                         border: OutlineInputBorder(),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                       ),
-                      style: const TextStyle(fontSize: 16, letterSpacing: 1.2),
+                      style: const TextStyle(fontSize: 14, letterSpacing: 1.1),
                       numberHintText: '4242 4242 4242 4242',
                       expirationHintText: 'MM/YY',
                       cvcHintText: 'CVC',
@@ -131,22 +133,22 @@ class _PaymentViewState extends State<PaymentView> {
                 ),
               ),
             ),
-            const SizedBox(height: 36),
+            const SizedBox(height: 28),
             // ปุ่มชำระเงิน
             _loading
                 ? const Center(child: CircularProgressIndicator())
                 : SizedBox(
                     width: double.infinity,
-                    height: 56,
+                    height: 48,
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.lock, size: 26),
-                      label: const Text('ชำระเงิน', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      icon: const Icon(Icons.lock, size: 22),
+                      label: const Text('ชำระเงิน', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6D4C41),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 4,
-                        shadowColor: Colors.brown.withOpacity(0.3),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 3,
+                        shadowColor: Colors.brown.withOpacity(0.24),
                       ),
                       onPressed: (_card?.complete == true && !_loading) ? _payWithCard : null,
                     ),
@@ -175,16 +177,12 @@ class _PaymentViewState extends State<PaymentView> {
     setState(() => _loading = true);
     try {
       print('กำลังเรียก backend...');
-      // 1. ขอ clientSecret จาก backend
-      final response = await http.post(
-        Uri.parse('http://172.20.10.20:3000/create-stripe-payment-intent'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'amount': widget.orderData['finalTotal'],
-          'orderId': widget.orderData['id'],
-          'currency': 'thb',
-        }),
-      );
+      // 1. ขอ clientSecret จาก backend โดยไล่ลอง host ที่ใช้ใน dev ทั่วไป
+      final response = await _requestPaymentIntent({
+        'amount': widget.orderData['finalTotal'],
+        'orderId': widget.orderData['id'],
+        'currency': 'thb',
+      });
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
       
@@ -214,49 +212,12 @@ class _PaymentViewState extends State<PaymentView> {
       if (mounted) {
         // 1. Create order in Firestore
         final user = FirebaseAuth.instance.currentUser;
+        String? createdOrderId;
         if (user != null) {
-          final orderId = widget.orderData['id'].toString();
-          // Clean items as before
-          final cleanedItems = (widget.orderData['items'] as List)
-              .map((item) {
-                final map = item is Map<String, dynamic>
-                    ? Map<String, dynamic>.from(item)
-                    : (item as dynamic).toMap() as Map<String, dynamic>;
-                map.forEach((k, v) {
-                  if (v is String) map[k] = v.trim();
-                });
-                map.removeWhere((k, v) => v == null || k == null || k.toString().trim().isEmpty || (v is! String && v is! num && v is! bool));
-                if (map.containsKey('imageUrl')) {
-                  var url = map['imageUrl'];
-                  if (url is String) {
-                    url = url.replaceAll(RegExp(r'\s+'), '');
-                    final uri = Uri.tryParse(url);
-                    final isValidUrl = url.startsWith('http') && uri != null && uri.hasAbsolutePath;
-                    if (!isValidUrl) {
-                      map.remove('imageUrl');
-                    } else {
-                      map['imageUrl'] = url;
-                    }
-                  } else {
-                    map.remove('imageUrl');
-                  }
-                }
-                if (map.containsKey('id')) {
-                  final idVal = map['id'];
-                  if (idVal is String) map['id'] = idVal.replaceAll(RegExp(r'\s+'), '');
-                }
-                if (map.containsKey('price')) {
-                  final price = map['price'];
-                  if (price is num && (!price.isFinite || price.isNaN)) map['price'] = 0;
-                }
-                if (map.containsKey('quantity')) {
-                  final qty = map['quantity'];
-                  if (qty is! int || qty <= 0) map['quantity'] = 1;
-                }
-                if (map.containsKey('createdAt')) map.remove('createdAt');
-                return map;
-              })
-              .toList();
+          final orderId = _sanitizeDocId(widget.orderData['id']);
+          createdOrderId = orderId;
+          final cleanedItems = _sanitizeOrderItems(widget.orderData['items']);
+          final couponCode = _resolveCoupon(widget.orderData['coupon']);
           // Build Firestore order data
           final orderData = <String, dynamic>{
             'id': orderId,
@@ -274,7 +235,7 @@ class _PaymentViewState extends State<PaymentView> {
             'finalTotal': ((widget.orderData['finalTotal'] ?? 0) is num && (widget.orderData['finalTotal'] ?? 0).isFinite)
                 ? (widget.orderData['finalTotal'] ?? 0).toDouble()
                 : 0.0,
-            'coupon': widget.orderData['coupon'],
+            if (couponCode != null) 'coupon': couponCode,
             'status': 'paid',
             'createdAt': FieldValue.serverTimestamp(),
           };
@@ -284,19 +245,36 @@ class _PaymentViewState extends State<PaymentView> {
           }
           print('DEBUG: Order data to Firestore:');
           print(orderData);
-          await FirebaseFirestore.instance.collection('orders').doc(orderId).set(orderData);
+          await FirebaseFirestore.instance
+              .collection('orders')
+              .doc(orderId)
+              .set(orderData);
           // ลด stock สินค้าทุกชิ้นในออเดอร์
-          for (final item in orderData['items'] as List) {
-            final productId = item['id'] ?? item['productId'];
-            final qty = item['quantity'] ?? 1;
-            if (productId != null && qty != null) {
-              await ProductController.decrementStock(productId.toString(), qty as int);
+          for (final dynamic entry in orderData['items'] as List) {
+            if (entry is! Map) continue;
+            final item = Map<String, dynamic>.from(entry);
+
+            final productId = (item['productId'] ?? item['id'] ?? '').toString().trim();
+            if (productId.isEmpty) continue;
+
+            final rawVariant = item['variant'] ?? item['variantName'];
+            final variantName = rawVariant == null ? null : rawVariant.toString().trim();
+            final rawQty = item['quantity'];
+            final qty = rawQty is num && rawQty > 0 ? rawQty.round() : 1;
+
+            await ProductController.decrementStock(
+              productId,
+              qty,
+              variantName: (variantName == null || variantName.isEmpty) ? null : variantName,
+            );
+          }
+          if (couponCode != null) {
+            try {
+              await _incrementCouponUsage(couponCode);
+            } catch (e) {
+              debugPrint('เพิ่มจำนวนการใช้คูปองไม่สำเร็จ: $e');
             }
           }
-          // Overwrite createdAt with serverTimestamp
-          await FirebaseFirestore.instance.collection('orders').doc(orderId).update({
-            'createdAt': FieldValue.serverTimestamp(),
-          });
         }
         setState(() => _loading = false);
         final amountText = (widget.orderData['finalTotal'] as num).toStringAsFixed(2);
@@ -310,18 +288,14 @@ class _PaymentViewState extends State<PaymentView> {
           final cart = Provider.of<CartController>(context, listen: false);
           cart.clear();
         } catch (_) {}
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ชำระเงินสำเร็จ! ✓'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
+        await _showPaymentSuccessSheet(
+          amountText: amountText,
+          orderId: createdOrderId ?? widget.orderData['id']?.toString() ?? '',
         );
-        // ไปหน้าประวัติคำสั่งซื้อแบบ pushReplacement เพื่อไม่ให้ stack ซ้อน
-        await Future.delayed(const Duration(milliseconds: 500));
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const OrderHistoryView()),
+          (route) => route.isFirst,
         );
       }
     } catch (e) {
@@ -336,6 +310,284 @@ class _PaymentViewState extends State<PaymentView> {
         );
       }
     }
+  }
+
+  Future<void> _showPaymentSuccessSheet({required String amountText, required String orderId}) async {
+    if (!mounted) return;
+    final displayOrderId = orderId.trim().isEmpty ? '-' : orderId.trim();
+    await showModalBottomSheet<void>(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return SafeArea(
+          child: LayoutBuilder(
+            builder: (ctx, constraints) {
+              final heightFactor = constraints.maxHeight < 600 ? 0.9 : 0.75;
+              return FractionallySizedBox(
+                heightFactor: heightFactor,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            offset: const Offset(0, 12),
+                            blurRadius: 32,
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                physics: const BouncingScrollPhysics(),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 72,
+                                      height: 72,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFE8F5E9),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 44),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    const Text(
+                                      'ชำระเงินสำเร็จ!',
+                                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF2E7D32)),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Order #$displayOrderId',
+                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF5D4037)),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'ยอดสุทธิ ฿$amountText',
+                                      style: const TextStyle(fontSize: 14, color: Color(0xFF6D4C41)),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF9C4),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFFBC02D), width: 1.2),
+                                      ),
+                                      child: Column(
+                                        children: const [
+                                          Text(
+                                            'ระบบบันทึกคำสั่งซื้อของคุณเรียบร้อยแล้ว คุณสามารถติดตามสถานะได้ในเมนูประวัติคำสั่งซื้อ',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(color: Color(0xFF5D4037), fontSize: 13, height: 1.35),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            '⚠ โปรดตรวจสอบข้อมูลการจัดส่งให้ถูกต้อง',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(color: Color(0xFFD84315), fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.receipt_long),
+                                label: const Text('ดูประวัติคำสั่งซื้อ'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF6D4C41),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                onPressed: () => Navigator.of(ctx).pop(),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  List<String> _buildBackendCandidates() {
+    final seen = <String>{};
+    final urls = <String>[
+      _envStripeBackendUrl,
+      _envBackendUrl,
+      'http://127.0.0.1:3000',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://172.20.10.20:3000',
+      'http://172.20.10.20:3000',
+    ];
+    return [for (final url in urls) if (url.isNotEmpty && seen.add(url)) url];
+  }
+
+  Future<http.Response> _requestPaymentIntent(Map<String, dynamic> payload) async {
+    Exception? lastError;
+    for (final baseUrl in _buildBackendCandidates()) {
+      final uri = Uri.parse('$baseUrl/create-stripe-payment-intent');
+      try {
+        debugPrint('Trying backend $baseUrl');
+        final response = await http
+            .post(
+              uri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 3));
+        if (response.statusCode == 200) {
+          print('PaymentIntent created via $baseUrl');
+          return response;
+        }
+        lastError = Exception('HTTP ${response.statusCode}: ${response.body}');
+      } on TimeoutException catch (e) {
+        debugPrint('Timeout calling $baseUrl: $e');
+        lastError = e;
+      } on Exception catch (e) {
+        debugPrint('Error calling $baseUrl: $e');
+        lastError = e;
+      }
+    }
+    throw lastError ?? Exception('ไม่สามารถเชื่อมต่อ backend สำหรับสร้าง PaymentIntent');
+  }
+
+  List<Map<String, dynamic>> _sanitizeOrderItems(dynamic rawItems) {
+    if (rawItems is! List || rawItems.isEmpty) return <Map<String, dynamic>>[];
+    return rawItems.map<Map<String, dynamic>>((item) {
+      final base = item is Map<String, dynamic>
+          ? Map<String, dynamic>.from(item)
+          : Map<String, dynamic>.from((item as dynamic).toMap() as Map);
+
+      String? imageUrl = base['imageUrl']?.toString().trim();
+      if (imageUrl != null) {
+        final cleaned = imageUrl.replaceAll(RegExp(r'\s+'), '');
+        final uri = Uri.tryParse(cleaned);
+        if (uri == null || !uri.hasAbsolutePath || !cleaned.startsWith('http')) {
+          imageUrl = null;
+        } else {
+          imageUrl = cleaned;
+        }
+      }
+
+      final compoundId = (base['legacyId'] ?? base['productId'] ?? base['id'] ?? '')
+          .toString()
+          .trim();
+      String? productId = base['productId']?.toString().trim();
+      String? variantName = base['variant']?.toString().trim();
+
+      if ((productId == null || productId.isEmpty) && compoundId.isNotEmpty) {
+        final separatorIndex = compoundId.indexOf('_');
+        if (separatorIndex > 0) {
+          productId = compoundId.substring(0, separatorIndex);
+          variantName ??= compoundId.substring(separatorIndex + 1).trim();
+        } else {
+          productId = compoundId;
+        }
+      }
+
+      final rawName = base['name']?.toString().trim();
+
+      double price = 0;
+      final rawPrice = base['price'];
+      if (rawPrice is num && rawPrice.isFinite) {
+        price = rawPrice.toDouble();
+      }
+
+      int quantity = 1;
+      final rawQty = base['quantity'];
+      if (rawQty is num && rawQty > 0 && rawQty.isFinite) {
+        quantity = rawQty.round();
+      }
+
+      final sanitized = <String, dynamic>{
+        if (productId != null && productId.isNotEmpty) ...{
+          'productId': productId,
+          'id': productId,
+        },
+        if (variantName != null && variantName.isNotEmpty) 'variant': variantName,
+        if (rawName != null && rawName.isNotEmpty) 'name': rawName,
+        'price': price,
+        'quantity': quantity,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+      };
+
+      if (compoundId.isNotEmpty) {
+        sanitized['legacyId'] = compoundId;
+      }
+
+      return sanitized;
+    }).where((item) => (item['productId'] ?? '').toString().isNotEmpty).toList(growable: false);
+  }
+
+  String? _resolveCoupon(dynamic rawCoupon) {
+    if (rawCoupon == null) return null;
+    final coupon = rawCoupon.toString().trim();
+    if (coupon.isEmpty || coupon.toLowerCase() == 'null') return null;
+    return coupon.toUpperCase();
+  }
+
+  String _sanitizeDocId(dynamic rawId) {
+    final fallback = DateTime.now().millisecondsSinceEpoch.toString();
+    if (rawId == null) return fallback;
+    final id = rawId.toString().trim();
+    if (id.isEmpty) return fallback;
+    final sanitized = id.replaceAll(RegExp(r'[\.~*/\[\]]'), '-');
+    return sanitized.isEmpty ? fallback : sanitized;
+  }
+
+  Future<void> _incrementCouponUsage(String code) async {
+    final query = await FirebaseFirestore.instance
+        .collection('coupons')
+        .where('code', isEqualTo: code)
+        .limit(1)
+        .get();
+    if (query.docs.isEmpty) return;
+
+    final docRef = query.docs.first.reference;
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) return;
+
+      final data = snapshot.data() ?? <String, dynamic>{};
+      final currentUsed = (data['usedCount'] is num) ? (data['usedCount'] as num).toInt() : 0;
+      final usageLimit = (data['usageLimit'] is num) ? (data['usageLimit'] as num).toInt() : 0;
+      final newUsed = currentUsed + 1;
+
+      final updates = <String, dynamic>{'usedCount': newUsed};
+      if (usageLimit > 0 && newUsed >= usageLimit) {
+        updates['isActive'] = false;
+      }
+
+      transaction.update(docRef, updates);
+    });
   }
 }
 

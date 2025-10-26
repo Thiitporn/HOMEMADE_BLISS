@@ -1884,11 +1884,25 @@ class OwnerMessagesTab extends StatelessWidget {
               title: Text(customerName),
               subtitle: Text(lastMessage,
                   maxLines: 1, overflow: TextOverflow.ellipsis),
-              onTap: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) =>
-                      ChatView(chatId: chatId, peerName: customerName),
-                ));
+              onTap: () async {
+                final owner = FirebaseAuth.instance.currentUser;
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatView(
+                      chatId: chatId,
+                      peerName: customerName,
+                      isOwner: true,
+                      ownerUid: owner?.uid,
+                      ownerDisplayName: owner?.displayName,
+                    ),
+                  ),
+                );
+                if (!context.mounted) return;
+                if (result == 'deleted') {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('ลบแชทแล้ว')),
+                  );
+                }
               },
             );
           },

@@ -2,26 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io';
 import 'chat_service.dart';
+import '../../common/dialog_utils.dart';
 
 class ChatView extends StatefulWidget {
   final String chatId;
   final String peerName;
-  const ChatView({required this.chatId, required this.peerName, Key? key}) : super(key: key);
+  final bool isOwner;
+  final String? ownerUid;
+  final String? ownerDisplayName;
+
+  const ChatView({
+    required this.chatId,
+    required this.peerName,
+    this.isOwner = false,
+    this.ownerUid,
+    this.ownerDisplayName,
+    Key? key,
+  }) : super(key: key);
 
   @override
   State<ChatView> createState() => _ChatViewState();
 }
 
 class _ChatViewState extends State<ChatView> {
-  static const String ownerUid = 'homemade_bliss_owner';
-  static const String ownerDisplayName = 'Admin homemade1';
+  static const String _legacyOwnerUid = 'homemade_bliss_owner';
+  final _controller = TextEditingController();
+  final _chatService = ChatService();
+  String myUid = '';
+  bool _isOwner = false;
+  String? _ownerUid;
+  String? _ownerDisplayName;
+  bool _contextReady = false;
 
   Future<String> getMyDisplayName() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return 'ลูกค้า';
-    if (user.uid == ownerUid) return ownerDisplayName;
+    if (_isOwner) return _ownerDisplayName ?? 'ร้านค้า';
     // Always fetch from Firestore users collection
     final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     final firestoreName = doc.data()?['displayName'];
@@ -29,6 +46,69 @@ class _ChatViewState extends State<ChatView> {
       return firestoreName;
     }
     return user.displayName?.isNotEmpty == true ? user.displayName! : 'ลูกค้า';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    _isOwner = widget.isOwner;
+    _ownerUid = widget.ownerUid;
+    _ownerDisplayName = widget.ownerDisplayName;
+    _initializeContext();
+  }
+
+  Future<void> _initializeContext() async {
+    final user = FirebaseAuth.instance.currentUser;
+    String? ownerUid = _ownerUid;
+    String? ownerDisplayName = _ownerDisplayName;
+    bool isOwner = _isOwner;
+
+    final chatDoc = await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).get();
+    final chatData = chatDoc.data();
+    if (chatData != null) {
+      ownerUid ??= (chatData['ownerUid'] as String?)?.trim();
+      ownerDisplayName ??= chatData['ownerDisplayName'] as String?;
+    }
+
+    if (user != null) {
+      myUid = user.uid;
+      if (!isOwner) {
+        if (ownerUid != null && ownerUid == user.uid) {
+          isOwner = true;
+        } else {
+          final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          final role = (userDoc.data()?['role'] ?? '').toString().toLowerCase();
+          if (role == 'owner') {
+            isOwner = true;
+          }
+          ownerDisplayName ??= userDoc.data()?['displayName'] as String?;
+        }
+      } else {
+        ownerDisplayName ??= user.displayName;
+      }
+    }
+
+    ownerDisplayName ??= 'ร้านค้า';
+
+    if ((ownerUid == null || ownerUid.isEmpty) && isOwner && myUid.isNotEmpty) {
+      ownerUid = myUid;
+      await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).set(
+        {
+          'ownerUid': ownerUid,
+          'ownerDisplayName': ownerDisplayName,
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _ownerUid = ownerUid;
+      _ownerDisplayName = ownerDisplayName;
+      _isOwner = isOwner;
+      _contextReady = true;
+    });
   }
 
   void _showImageUrlDialog() async {
@@ -68,9 +148,12 @@ class _ChatViewState extends State<ChatView> {
                     senderUid: myUid,
                     text: url,
                     imageUrl: '',
-                    ownerUid: ownerUid,
+                    ownerUid: _resolveOwnerUidForUpdate(),
                     senderDisplayName: displayName,
                   );
+                  if (_isOwner && _ownerUid != myUid && myUid.isNotEmpty && mounted) {
+                    setState(() => _ownerUid = myUid);
+                  }
                   if (mounted) Navigator.of(context).pop();
                 }
               },
@@ -81,9 +164,6 @@ class _ChatViewState extends State<ChatView> {
       },
     );
   }
-  final _controller = TextEditingController();
-  final _chatService = ChatService();
-  String get myUid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +183,13 @@ class _ChatViewState extends State<ChatView> {
             Text(widget.peerName, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: _isOwner ? 'ลบแชทถาวร' : 'ซ่อนบทสนทนา',
+            onPressed: _contextReady ? _handleDeleteChat : null,
+          ),
+        ],
       ),
   backgroundColor: const Color(0xFFF9F8F6), // Minimal off-white
       body: Column(
@@ -120,9 +207,10 @@ class _ChatViewState extends State<ChatView> {
                   itemBuilder: (context, i) {
                     final data = docs[docs.length - 1 - i].data();
                     final senderUid = data['senderUid'] as String?;
-                    final senderName = senderUid == ownerUid
-                        ? ownerDisplayName
-                        : (data['senderDisplayName'] as String? ?? 'ลูกค้า');
+          final isOwnerSender = senderUid != null && senderUid == (_ownerUid ?? _legacyOwnerUid);
+          final senderName = isOwnerSender
+            ? (_ownerDisplayName ?? 'ร้านค้า')
+            : (data['senderDisplayName'] as String? ?? 'ลูกค้า');
                     final isMe = senderUid == myUid;
                     final text = data['text'] as String? ?? '';
                     // final imageUrl = data['imageUrl'] as String?;
@@ -260,9 +348,12 @@ class _ChatViewState extends State<ChatView> {
                         senderUid: myUid,
                         text: text,
                         imageUrl: '',
-                        ownerUid: ownerUid,
+                        ownerUid: _resolveOwnerUidForUpdate(),
                         senderDisplayName: displayName,
                       );
+                      if (_isOwner && _ownerUid != myUid && myUid.isNotEmpty && mounted) {
+                        setState(() => _ownerUid = myUid);
+                      }
                       _controller.clear();
                     }
                   },
@@ -274,5 +365,51 @@ class _ChatViewState extends State<ChatView> {
         ],
       ),
     );
+  }
+
+  String _resolveOwnerUidForUpdate() {
+    if (_ownerUid != null && _ownerUid!.isNotEmpty) {
+      return _ownerUid!;
+    }
+    if (_isOwner && myUid.isNotEmpty) {
+      return myUid;
+    }
+    return _legacyOwnerUid;
+  }
+
+  Future<void> _handleDeleteChat() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (!_isOwner && user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณาเข้าสู่ระบบก่อนลบแชท')),
+      );
+      return;
+    }
+
+    final confirmed = await showConfirmDialog(
+      context,
+      _isOwner ? 'ลบแชท' : 'ซ่อนบทสนทนา',
+      _isOwner
+          ? 'การลบนี้จะลบข้อความทั้งหมดถาวร ต้องการดำเนินการต่อหรือไม่?'
+          : 'แชทนี้จะถูกซ่อนจากรายการของคุณ และจะแสดงอีกครั้งเมื่อร้านค้าตอบใหม่ ต้องการดำเนินการหรือไม่?',
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      if (_isOwner) {
+        await _chatService.hardDeleteChat(widget.chatId);
+        if (!mounted) return;
+        Navigator.of(context).pop('deleted');
+      } else {
+        final uid = user!.uid;
+        await _chatService.archiveChat(chatId: widget.chatId, userUid: uid);
+        if (!mounted) return;
+        Navigator.of(context).pop('archived');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final message = _isOwner ? 'ไม่สามารถลบแชทได้: $e' : 'ไม่สามารถซ่อนแชทได้: $e';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 }

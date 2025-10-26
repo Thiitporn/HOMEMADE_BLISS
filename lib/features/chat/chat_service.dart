@@ -23,7 +23,8 @@ class ChatService {
       'imageUrl': imageUrl,
       if (senderDisplayName != null) 'senderDisplayName': senderDisplayName,
     };
-    await _db.collection('chats').doc(chatId).collection('messages').add(msgData);
+    final chatRef = _db.collection('chats').doc(chatId);
+    await chatRef.collection('messages').add(msgData);
     final chatUpdate = {
       'lastMessage': imageUrl.isNotEmpty ? '[รูปภาพ]' : text,
       'lastTimestamp': FieldValue.serverTimestamp(),
@@ -31,6 +32,34 @@ class ChatService {
     if (ownerUid != null) {
       chatUpdate['ownerUid'] = ownerUid;
     }
-    await _db.collection('chats').doc(chatId).set(chatUpdate, SetOptions(merge: true));
+    if (ownerUid != null && senderUid == ownerUid) {
+      chatUpdate['hiddenFor'] = FieldValue.delete();
+    } else {
+      chatUpdate['hiddenFor'] = FieldValue.arrayRemove([senderUid]);
+    }
+    chatUpdate['archivedAt'] = FieldValue.delete();
+    await chatRef.set(chatUpdate, SetOptions(merge: true));
+  }
+
+  Future<void> archiveChat({required String chatId, required String userUid}) async {
+    final chatRef = _db.collection('chats').doc(chatId);
+    await chatRef.set(
+      {
+        'hiddenFor': FieldValue.arrayUnion([userUid]),
+        'archivedAt': {userUid: FieldValue.serverTimestamp()},
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<void> hardDeleteChat(String chatId) async {
+    final chatRef = _db.collection('chats').doc(chatId);
+    final messagesSnapshot = await chatRef.collection('messages').get();
+    final batch = _db.batch();
+    for (final doc in messagesSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    batch.delete(chatRef);
+    await batch.commit();
   }
 }

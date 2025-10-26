@@ -40,80 +40,80 @@ class _PaymentViewState extends State<PaymentView> {
     final order = widget.orderData;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ชำระเงินด้วยบัตรเครดิต'),
-        backgroundColor: const Color(0xFF6D4C41),
+  title: const Text('ชำระเงินด้วยบัตรเครดิต'),
+  backgroundColor: const Color(0xFF9E857A),
         elevation: 0,
       ),
-      backgroundColor: const Color(0xFFF7F3F0),
+  backgroundColor: const Color(0xFFF8F2ED),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 18.0),
+  padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 14.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
               // Card: Payment Summary
               Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 color: Colors.white,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        children: [
-                          Icon(Icons.receipt_long, color: Color(0xFF8D6E63), size: 24),
-                          SizedBox(width: 8),
-                          Text('สรุปยอดชำระ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF6D4C41))),
+                        children: const [
+                          Icon(Icons.receipt_long, color: Color(0xFF9E857A), size: 22),
+                          SizedBox(width: 6),
+                          Text('สรุปยอดชำระ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF6D4C41))),
                         ],
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total:', style: TextStyle(fontSize: 14, color: Colors.black87)),
-                          Text('฿${order['total'].toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                          const Text('Total:', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                          Text('฿${order['total'].toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, color: Colors.black87)),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Discount:', style: TextStyle(fontSize: 14, color: Colors.green)),
-                          Text('-฿${order['discount'].toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: Colors.green)),
+                          const Text('Discount:', style: TextStyle(fontSize: 13, color: Colors.green)),
+                          Text('-฿${order['discount'].toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, color: Colors.green)),
                         ],
                       ),
-                      const Divider(height: 24, thickness: 1.1),
+                      const Divider(height: 18, thickness: 1),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Final Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6D4C41))),
-                          Text('฿${order['finalTotal'].toStringAsFixed(2)}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF6D4C41))),
+                          const Text('Final Total:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF7A5F54))),
+                          Text('฿${order['finalTotal'].toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF7A5F54))),
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 20),
             // Card: Credit Card Info
             Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 1,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               color: const Color(0xFFF3E5E1),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.credit_card, color: Color(0xFF8D6E63), size: 20),
-                        SizedBox(width: 6),
-                        Text('ข้อมูลบัตรเครดิต', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF6D4C41))),
+                        const Icon(Icons.credit_card, color: Color(0xFF9E857A), size: 18),
+                        const SizedBox(width: 6),
+                        const Text('ข้อมูลบัตรเครดิต', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF7A5F54))),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     CardField(
                       onCardChanged: (card) {
                         setState(() => _card = card);
@@ -122,9 +122,9 @@ class _PaymentViewState extends State<PaymentView> {
                         border: OutlineInputBorder(),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                       ),
-                      style: const TextStyle(fontSize: 14, letterSpacing: 1.1),
+                      style: const TextStyle(fontSize: 13, letterSpacing: 1.05),
                       numberHintText: '4242 4242 4242 4242',
                       expirationHintText: 'MM/YY',
                       cvcHintText: 'CVC',
@@ -133,21 +133,21 @@ class _PaymentViewState extends State<PaymentView> {
                 ),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 18),
             // ปุ่มชำระเงิน
             _loading
                 ? const Center(child: CircularProgressIndicator())
                 : SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 44,
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.lock, size: 22),
-                      label: const Text('ชำระเงิน', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                      label: const Text('ชำระเงิน', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6D4C41),
+                        backgroundColor: const Color(0xFF9E857A),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 3,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 2,
                         shadowColor: Colors.brown.withOpacity(0.24),
                       ),
                       onPressed: (_card?.complete == true && !_loading) ? _payWithCard : null,

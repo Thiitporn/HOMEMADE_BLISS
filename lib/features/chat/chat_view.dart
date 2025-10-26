@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:homemade_bliss/util/theme/theme.dart';
 import 'chat_service.dart';
 import '../../common/dialog_utils.dart';
 
@@ -169,12 +170,12 @@ class _ChatViewState extends State<ChatView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF74512D),
+        backgroundColor: kPrimaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         title: Row(
           children: [
-            const CircleAvatar(
+      const CircleAvatar(
               radius: 18,
               backgroundColor: Color(0xFFAF8F6F),
               child: Icon(Icons.person, color: Colors.white),
@@ -191,7 +192,7 @@ class _ChatViewState extends State<ChatView> {
           ),
         ],
       ),
-  backgroundColor: const Color(0xFFF9F8F6), // Minimal off-white
+    backgroundColor: const Color(0xFFF8F2ED), // Minimal off-white
       body: Column(
         children: [
           Expanded(
@@ -228,7 +229,7 @@ class _ChatViewState extends State<ChatView> {
                             ),
                             child: Text(
                               senderName,
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF74512D), fontWeight: FontWeight.w600),
+                              style: const TextStyle(fontSize: 11, color: kPrimaryColor, fontWeight: FontWeight.w600),
                             ),
                           ),
                           Row(
@@ -314,14 +315,14 @@ class _ChatViewState extends State<ChatView> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.image, color: Color(0xFF74512D)),
+                  icon: const Icon(Icons.image, color: kPrimaryColor),
                   onPressed: _showImageUrlDialog,
                   tooltip: 'แนบรูปภาพ',
                 ),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F4E1),
+                      color: const Color(0xFFF3E6DC),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: const Color(0xFFAF8F6F), width: 1),
                     ),
@@ -338,7 +339,7 @@ class _ChatViewState extends State<ChatView> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.send, color: Color(0xFF74512D)),
+                  icon: const Icon(Icons.send, color: kPrimaryColor),
                   onPressed: () async {
                     final text = _controller.text.trim();
                     if (text.isNotEmpty) {

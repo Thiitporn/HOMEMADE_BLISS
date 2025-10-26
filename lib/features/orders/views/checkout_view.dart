@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'payment_view.dart';
 import '../../../common/dialog_utils.dart';
 
@@ -87,10 +88,10 @@ class _CheckoutViewState extends State<CheckoutView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  backgroundColor: const Color(0xFFF8F4F0),
+      backgroundColor: const Color(0xFFF8F2ED),
       appBar: AppBar(
         title: const Text('ชำระเงิน'),
-        backgroundColor: const Color(0xFF8D6E63),
+        backgroundColor: const Color(0xFF9E857A),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -105,22 +106,23 @@ class _CheckoutViewState extends State<CheckoutView> {
                 // สรุปรายการสินค้า
                 Card(
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   color: Colors.white,
                   shadowColor: Colors.brown.shade100,
                   child: Padding(
-                    padding: const EdgeInsets.all(10.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.receipt_long, color: Color(0xFF6D4C41), size: 26),
-                            const SizedBox(width: 8),
-                            const Text('สรุปรายการสินค้า', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF5D4037))),
+                            const Icon(Icons.receipt_long, color: Color(0xFF9E857A), size: 26),
+                            const SizedBox(width: 10),
+                            const Text('สรุปรายการสินค้า', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF5D4037))),
                           ],
                         ),
-                        const Divider(height: 24, thickness: 1),
+                        const SizedBox(height: 12),
+                        const Divider(height: 20, thickness: 1),
                         ...widget.items.map((item) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6.0),
                           child: Row(
@@ -131,8 +133,8 @@ class _CheckoutViewState extends State<CheckoutView> {
                                 height: 44,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: const Color(0xFFF8F4F0),
-                                  boxShadow: [BoxShadow(color: Colors.brown.shade100.withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 2))],
+                                  color: const Color(0xFFF2E7E1),
+                                  boxShadow: [BoxShadow(color: Colors.brown.shade100.withOpacity(0.12), blurRadius: 5, offset: const Offset(0, 2))],
                                 ),
                                 child: ClipOval(
                                   child: () {
@@ -172,21 +174,21 @@ class _CheckoutViewState extends State<CheckoutView> {
                                   children: [
                                     Text(
                                       item['name'] ?? '',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF5D4037)),
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF5D4037)),
                                       softWrap: true,
                                       overflow: TextOverflow.visible,
                                     ),
                                     const SizedBox(height: 1),
                                     Text(
                                       '฿${item['price']} × ${item['quantity']}',
-                                      style: const TextStyle(color: Color(0xFF8D6E63), fontSize: 10),
+                                      style: const TextStyle(color: Color(0xFF8D6E63), fontSize: 12),
                                     ),
                                   ],
                                 ),
                               ),
                               Text(
                                 '฿${(item['price'] * item['quantity']).toStringAsFixed(2)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF8D6E63)),
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF8D6E63)),
                               ),
                             ],
                           ),
@@ -198,146 +200,73 @@ class _CheckoutViewState extends State<CheckoutView> {
                 const SizedBox(height: 20),
                 
                 // ข้อมูลการจัดส่ง
-                Row(
-                  children: [
-                    const Icon(Icons.local_shipping, color: Color(0xFF6D4C41), size: 24),
-                    SizedBox(width: 8),
-                    const Text('ข้อมูลการจัดส่ง', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF5D4037))),
+                _buildSectionHeader(Icons.local_shipping, 'ข้อมูลการจัดส่ง'),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: _buildInputDecoration('ชื่อ-นามสกุล', Icons.person),
+                  validator: (v) => v == null || v.isEmpty ? 'กรุณากรอกชื่อ' : null,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: _buildInputDecoration('เบอร์โทร', Icons.phone),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
                   ],
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'กรุณากรอกเบอร์โทร';
+                    if (v.length != 10) return 'กรุณากรอกเบอร์โทร 10 หลัก';
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 1,
-                  margin: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  color: Colors.white,
-                  shadowColor: Colors.brown.shade100,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: TextFormField(
-                      controller: _nameController,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: InputDecoration(
-                        labelText: 'ชื่อ-นามสกุล',
-                        labelStyle: const TextStyle(fontSize: 13),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        prefixIcon: const Icon(Icons.person, color: Color(0xFF6D4C41), size: 22),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? 'กรุณากรอกชื่อ' : null,
-                    ),
-                  ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _addressController,
+                  decoration: _buildInputDecoration('ที่อยู่จัดส่ง', Icons.location_on),
+                  maxLines: 3,
+                  validator: (v) => v == null || v.isEmpty ? 'กรุณากรอกที่อยู่' : null,
                 ),
-                const SizedBox(height: 12),
-                const SizedBox(height: 8),
-                Card(
-                  elevation: 1,
-                  margin: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  color: Colors.white,
-                  shadowColor: Colors.brown.shade100,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: TextFormField(
-                      controller: _phoneController,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: InputDecoration(
-                        labelText: 'เบอร์โทร',
-                        labelStyle: const TextStyle(fontSize: 13),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        prefixIcon: const Icon(Icons.phone, color: Color(0xFF6D4C41), size: 22),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'กรุณากรอกเบอร์โทร';
-                        if (v.length != 10) return 'กรุณากรอกเบอร์โทร 10 หลัก';
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const SizedBox(height: 8),
-                Card(
-                  elevation: 1,
-                  margin: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  color: Colors.white,
-                  shadowColor: Colors.brown.shade100,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: TextFormField(
-                      controller: _addressController,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: InputDecoration(
-                        labelText: 'ที่อยู่จัดส่ง',
-                        labelStyle: const TextStyle(fontSize: 13),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        prefixIcon: const Icon(Icons.location_on, color: Color(0xFF6D4C41), size: 22),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                      ),
-                      maxLines: 3,
-                      validator: (v) => v == null || v.isEmpty ? 'กรุณากรอกที่อยู่' : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 22),
                 
                 // คูปองส่วนลด
                 _loadingCoupons
                     ? const Center(child: CircularProgressIndicator())
-                    : Card(
-                        elevation: 1,
-                        margin: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        color: Colors.white,
-                        shadowColor: Colors.brown.shade100,
-                        child: Padding(
-                          padding: const EdgeInsets.all(4.0),
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedCoupon,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'เลือกคูปองส่วนลด',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                              prefixIcon: const Icon(Icons.local_offer, color: Color(0xFF6D4C41), size: 22),
-                            ),
-                            items: <DropdownMenuItem<String>>[
-                              const DropdownMenuItem(value: null, child: Text('ไม่ใช้คูปอง')),
-                              ..._availableCoupons.map((c) => DropdownMenuItem(
-                                    value: c['code'],
-                                    child: Text(
-                                      '${c['code']} - ${c['description'] ?? ''}',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  )),
-                            ],
-                            onChanged: _applyCoupon,
-                          ),
-                        ),
+                    : DropdownButtonFormField<String?>(
+                        value: _selectedCoupon,
+                        isExpanded: true,
+                        decoration: _buildInputDecoration('เลือกคูปองส่วนลด', Icons.local_offer),
+                        items: <DropdownMenuItem<String?>>[
+                          const DropdownMenuItem(value: null, child: Text('ไม่ใช้คูปอง')),
+                          ..._availableCoupons.map((c) => DropdownMenuItem<String?>(
+                                value: c['code'],
+                                child: Text(
+                                  '${c['code']} - ${c['description'] ?? ''}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              )),
+                        ],
+                        onChanged: _applyCoupon,
                       ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 22),
                 
                 // สรุปราคา
                 Card(
                   elevation: 1,
-                  color: const Color(0xFFF8F4F0),
+                  color: const Color(0xFFFDF9F4),
                   shadowColor: Colors.brown.shade100,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: Padding(
-                    padding: const EdgeInsets.all(6.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 16.0),
                     child: Column(
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF5D4037))),
-                            Text('฿${widget.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF8D6E63))),
+                            const Text('ยอดรวมสินค้า', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF5D4037))),
+                            Text('฿${widget.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF8D6E63))),
                           ],
                         ),
                         if (_discount > 0) ...[
@@ -345,19 +274,21 @@ class _CheckoutViewState extends State<CheckoutView> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Discount', style: TextStyle(color: Colors.green, fontSize: 11)),
-                              Text('-฿${_discount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontSize: 11)),
+                              const Text('ส่วนลดคูปอง', style: TextStyle(color: Colors.green, fontSize: 13)),
+                              Text('-฿${_discount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontSize: 13)),
                             ],
                           ),
                         ],
-                        const Divider(height: 16, thickness: 1),
+                        const SizedBox(height: 12),
+                        const Divider(height: 20, thickness: 1.1),
+                        const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Final Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF5D4037))),
+                            const Text('ยอดที่ต้องชำระ', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: Color(0xFF5D4037))),
                             Text(
                               '฿${(widget.totalPrice - _discount).toStringAsFixed(2)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF8D6E63)),
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: Color(0xFF8D6E63)),
                             ),
                           ],
                         ),
@@ -371,15 +302,19 @@ class _CheckoutViewState extends State<CheckoutView> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.check_circle_outline, size: 22, color: Color(0xFF6D4C41)),
-                    label: const Text('ยืนยันการสั่งซื้อ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.check_circle_outline, size: 22),
+                    label: Text(
+                      'ยืนยันการสั่งซื้อ',
+                      style: GoogleFonts.kanit(fontWeight: FontWeight.w700, fontSize: 16),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(32),
-                      backgroundColor: const Color(0xFF8D6E63),
+                      minimumSize: const Size.fromHeight(52),
+                      backgroundColor: const Color(0xFF9E857A),
                       foregroundColor: Colors.white,
-                      elevation: 1,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      shadowColor: Colors.brown.shade200,
+                      textStyle: GoogleFonts.kanit(fontWeight: FontWeight.w700, fontSize: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 2,
+                      shadowColor: Colors.brown.withOpacity(0.3),
                     ),
                     onPressed: () async {
                       final confirmed = await showConfirmDialog(
@@ -390,6 +325,9 @@ class _CheckoutViewState extends State<CheckoutView> {
                       if (!confirmed) return;
                       if (_formKey.currentState?.validate() ?? false) {
                         final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+                        final orderItems = widget.items
+                            .map((item) => Map<String, dynamic>.from(item))
+                            .toList();
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => PaymentView(
@@ -398,9 +336,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                                 'name': _nameController.text,
                                 'phone': _phoneController.text,
                                 'address': _addressController.text,
-                                'items': widget.items
-                                    .map((item) => item is Map<String, dynamic> ? item : (item as dynamic).toMap())
-                                    .toList(),
+                                'items': orderItems,
                                 'total': widget.totalPrice,
                                 'discount': _discount,
                                 'finalTotal': widget.totalPrice - _discount,
@@ -418,6 +354,41 @@ class _CheckoutViewState extends State<CheckoutView> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF9E857A), size: 24),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF6D4C41)),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _buildInputDecoration(String label, IconData icon) {
+    const baseIconColor = Color(0xFF9E857A);
+    final enabledBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: baseIconColor.withOpacity(0.18), width: 1),
+    );
+    final focusedBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFF8D6E63), width: 1.4),
+    );
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: Colors.white,
+      prefixIcon: Icon(icon, color: baseIconColor, size: 22),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+      enabledBorder: enabledBorder,
+      focusedBorder: focusedBorder,
+      border: enabledBorder,
     );
   }
 }

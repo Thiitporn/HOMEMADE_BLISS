@@ -29,21 +29,21 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
         children: [
           // Filter tabs
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFFF6ECE5), Color(0xFFEFE3D9)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(26),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.brown.withOpacity(0.08),
-                    blurRadius: 18,
-                    offset: const Offset(0, 10),
+                    color: Colors.brown.withOpacity(0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
@@ -52,11 +52,11 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                 child: Row(
                   children: [
                     _buildFilterChip('ทั้งหมด', 'all'),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     _buildFilterChip('รอยืนยัน', 'pending'),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     _buildFilterChip('กำลังทำ', 'preparing'),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     _buildFilterChip('เสร็จแล้ว', 'completed'),
                   ],
                 ),
@@ -116,7 +116,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                 }
                 
                 return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
                   itemBuilder: (context, i) {
                     if (i == 0) {
                       final doc = docs[0];
@@ -126,7 +126,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                         children: [
                           if (summary.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.only(bottom: 10),
                               child: _StatusOverview(summary: summary),
                             ),
                           _buildOrderCard(doc.id, data),
@@ -137,7 +137,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                     final data = doc.data();
                     return _buildOrderCard(doc.id, data);
                   },
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemCount: docs.length,
                 );
               },
@@ -155,27 +155,27 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
 
     return ChoiceChip(
       label: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 12),
+          style: const TextStyle(fontSize: 11),
         ),
       ),
       selected: isSelected,
       onSelected: (_) {
         setState(() => selectedFilter = value);
       },
-      backgroundColor: Colors.white.withOpacity(0.6),
+      backgroundColor: Colors.white.withOpacity(0.65),
       selectedColor: mediumBrown,
       labelStyle: TextStyle(
         color: isSelected ? Colors.white : unselected,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
-        fontSize: 12,
+        fontSize: 11,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         side: BorderSide(
           color: isSelected ? mediumBrown : Colors.white.withOpacity(0.0),
         ),
@@ -290,38 +290,39 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
     Color statusColor = _getStatusColor(status);
     
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
-          colors: [Colors.white, statusColor.withOpacity(0.08)],
+          colors: [Colors.white, statusColor.withOpacity(0.07)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: lightBorder.withOpacity(0.5)),
+        border: Border.all(color: lightBorder.withOpacity(0.45)),
         boxShadow: [
           BoxShadow(
-            color: Colors.brown.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 12),
+            color: Colors.brown.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Stack(
         children: [
           Positioned(
-            right: -30,
-            top: -30,
+            right: -36,
+            top: -36,
             child: Container(
-              width: 120,
-              height: 120,
+              width: 84,
+              height: 84,
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.08),
+                color: statusColor.withOpacity(0.07),
                 shape: BoxShape.circle,
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -331,17 +332,17 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
 
                     Widget buildStatusChip() {
                       return Container(
-                        constraints: const BoxConstraints(maxWidth: 120),
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                        constraints: const BoxConstraints(maxWidth: 100),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.14),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(_statusIcon(status), size: 12, color: statusColor),
-                            const SizedBox(width: 6),
+                            Icon(_statusIcon(status), size: 11, color: statusColor),
+                            const SizedBox(width: 5),
                             Flexible(
                               child: Text(
                                 statusText,
@@ -349,7 +350,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                                 style: TextStyle(
                                   color: statusColor,
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 10,
+                                  fontSize: 9,
                                 ),
                               ),
                             ),
@@ -365,19 +366,19 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              width: 40,
-                              height: 40,
+                              width: 32,
+                              height: 32,
                               decoration: BoxDecoration(
-                                color: statusColor.withOpacity(0.16),
-                                borderRadius: BorderRadius.circular(16),
+                                color: statusColor.withOpacity(0.14),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(
                                 Icons.receipt_long,
                                 color: statusColor,
-                                size: 20,
+                                size: 18,
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,20 +390,20 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                                     style: TextStyle(
                                       color: darkBrown,
                                       fontWeight: FontWeight.w700,
-                                      fontSize: 13,
+                                      fontSize: 12,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 3),
                                   Row(
                                     children: [
-                                      Icon(Icons.person_outline, size: 13, color: Colors.grey[600]),
-                                      const SizedBox(width: 6),
+                                      Icon(Icons.person_outline, size: 11, color: Colors.grey[600]),
+                                      const SizedBox(width: 5),
                                       Expanded(
                                         child: Text(
                                           customerName,
                                           style: TextStyle(
                                             color: Colors.grey[700],
-                                            fontSize: 11,
+                                            fontSize: 10,
                                           ),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
@@ -411,17 +412,17 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                                     ],
                                   ),
                                   if (phone.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
+                                    const SizedBox(height: 1),
                                     Row(
                                       children: [
-                                        Icon(Icons.phone_outlined, size: 12, color: Colors.grey[500]),
-                                        const SizedBox(width: 6),
+                                        Icon(Icons.phone_outlined, size: 11, color: Colors.grey[500]),
+                                        const SizedBox(width: 5),
                                         Expanded(
                                           child: Text(
                                             phone,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                                            style: TextStyle(color: Colors.grey[600], fontSize: 9),
                                           ),
                                         ),
                                       ],
@@ -431,14 +432,14 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                               ),
                             ),
                             if (showInlineChip) ...[
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               buildStatusChip(),
                             ],
                           ],
                         ),
                         if (!showInlineChip)
                           Padding(
-                            padding: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.only(top: 10),
                             child: Align(
                               alignment: Alignment.centerRight,
                               child: buildStatusChip(),
@@ -448,13 +449,13 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 if (items.isNotEmpty)
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.65),
-                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.white.withOpacity(0.75),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       children: [
@@ -469,10 +470,10 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                     ),
                   ),
                 if (notes.isNotEmpty) ...[
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                   _OrderNote(notes: notes),
                 ],
-                const SizedBox(height: 18),
+                  const SizedBox(height: 10),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -484,29 +485,29 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                             'ยอดรวม',
                             style: TextStyle(
                               color: Colors.grey[600],
-                              fontSize: 10,
+                              fontSize: 9,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 3),
                           Text(
                             '฿${totalAmount.toStringAsFixed(2)}',
                             style: TextStyle(
                               color: darkBrown,
                               fontWeight: FontWeight.w800,
-                              fontSize: 16,
+                              fontSize: 14,
                             ),
                           ),
                           if (createdAt != null) ...[
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 4),
                             Row(
                               children: [
-                                Icon(Icons.access_time, size: 12, color: Colors.grey[500]),
-                                const SizedBox(width: 6),
+                                Icon(Icons.access_time, size: 10, color: Colors.grey[500]),
+                                const SizedBox(width: 4),
                                 Text(
                                   _formatDate(createdAt),
                                   style: TextStyle(
                                     color: Colors.grey[600],
-                                    fontSize: 10,
+                                    fontSize: 9,
                                   ),
                                 ),
                               ],
@@ -515,15 +516,15 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     if (status != 'completed' && status != 'cancelled')
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: mediumBrown,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
                         ),
@@ -541,16 +542,16 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.1,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       )
                     else
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey[300]!),
                         ),
                         child: Text(
@@ -558,7 +559,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView> {
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontWeight: FontWeight.w600,
-                            fontSize: 11,
+                            fontSize: 10,
                           ),
                         ),
                       ),
@@ -749,19 +750,19 @@ class _StatusOverview extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFFBF2EA), Color(0xFFF0E3D8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.brown.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 14),
+            color: Colors.brown.withOpacity(0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -773,7 +774,7 @@ class _StatusOverview extends StatelessWidget {
             const SizedBox(width: 4),
             for (int i = 0; i < summary.length; i++) ...[
               _StatusMetricTile(data: summary[i], theme: theme),
-              if (i != summary.length - 1) const SizedBox(width: 12),
+              if (i != summary.length - 1) const SizedBox(width: 10),
             ],
             const SizedBox(width: 4),
           ],
@@ -792,11 +793,11 @@ class _StatusMetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 150,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: 130,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: data.color.withOpacity(0.16)),
       ),
       child: Column(
@@ -804,15 +805,15 @@ class _StatusMetricTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 26,
+            height: 26,
             decoration: BoxDecoration(
               color: data.color.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(data.icon, color: data.color, size: 16),
+            child: Icon(data.icon, color: data.color, size: 14),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             data.label,
             maxLines: 2,
@@ -820,15 +821,15 @@ class _StatusMetricTile extends StatelessWidget {
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w700,
               color: const Color(0xFF4E342E),
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             '${data.count} รายการ',
             style: theme.textTheme.labelSmall?.copyWith(
               color: const Color(0xFF7A6F66),
-              fontSize: 10,
+              fontSize: 9,
             ),
           ),
         ],
@@ -864,7 +865,7 @@ class _OrderItemRow extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
             children: [
               Expanded(
@@ -875,47 +876,47 @@ class _OrderItemRow extends StatelessWidget {
                       name,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        fontSize: 11,
                         color: Color(0xFF3F372F),
                       ),
                     ),
                     if (variant.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.only(top: 1),
                         child: Text(
                           variant,
                           style: TextStyle(
                             color: Colors.grey[600],
-                            fontSize: 10,
+                            fontSize: 9,
                           ),
                         ),
                       ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Flexible(
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Wrap(
-                    spacing: 10,
-                    runSpacing: 6,
+                    spacing: 6,
+                    runSpacing: 4,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     alignment: WrapAlignment.end,
                     runAlignment: WrapAlignment.end,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
                           color: accent.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           'x$quantity',
                           style: TextStyle(
                             color: quantityColor,
                             fontWeight: FontWeight.w600,
-                            fontSize: 11,
+                            fontSize: 10,
                           ),
                         ),
                       ),
@@ -925,7 +926,7 @@ class _OrderItemRow extends StatelessWidget {
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF4E342E),
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -960,22 +961,22 @@ class _OrderNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFFF6EFE9),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.note_alt_outlined, size: 16, color: Color(0xFF8D6E63)),
-          const SizedBox(width: 10),
+          const Icon(Icons.note_alt_outlined, size: 14, color: Color(0xFF8D6E63)),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               notes,
               style: const TextStyle(
                 color: Color(0xFF5C5149),
-                fontSize: 11,
+                fontSize: 10,
               ),
             ),
           ),

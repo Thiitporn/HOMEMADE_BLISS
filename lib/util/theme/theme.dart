@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // กำหนดค่าสีหลัก
-const Color kPrimaryColor = Color(0xFF74512D);
+const Color kPrimaryColor = Color(0xFF9E857A);
 const Color kSecondaryColor = Color(0xFFAF8F6F);
-const Color kBackgroundColor = Color(0xFFF8F4E1);
+const Color kBackgroundColor = Color(0xFFF8F2ED);
 const Color kDarkColor = Color(0xFF543310);
 
 class TAppTheme {

@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'orders_management_view.dart';
 import 'coupons_management_view.dart';
 import '../../authentication/views/edit_profile_view.dart';
+import 'sales_report_view.dart';
 
 class OwnerDashboardView extends StatefulWidget {
   const OwnerDashboardView({Key? key}) : super(key: key);
@@ -18,7 +19,6 @@ class OwnerDashboardView extends StatefulWidget {
 
 class _OwnerDashboardViewState extends State<OwnerDashboardView> {
   int _tabIndex = 0;
-
   final Color darkBrown = const Color(0xFF4E342E);
   final Color mediumBrown = const Color(0xFF8D6E63);
 
@@ -83,6 +83,11 @@ class _OwnerDashboardViewState extends State<OwnerDashboardView> {
         ],
       ),
     );
+  }
+
+  void switchToTab(int index) {
+    if (!mounted || index == _tabIndex) return;
+    setState(() => _tabIndex = index);
   }
 
   Future<void> _showAddProductSheet(BuildContext context) async {
@@ -645,10 +650,8 @@ class OwnerDashboardTab extends StatelessWidget {
                 spacing: spacing,
                 runSpacing: spacing,
                 children: cards.map((card) {
-                  final tileHeight = itemWidth * 1.12;
                   return SizedBox(
                     width: itemWidth,
-                    height: tileHeight,
                     child: card,
                   );
                 }).toList(),
@@ -690,99 +693,28 @@ class OwnerDashboardTab extends StatelessWidget {
         title: 'รายงานยอดขาย',
         icon: Icons.bar_chart,
         color: Colors.blue,
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('รายงานยอดขาย'),
-              content: SizedBox(
-                width: 350,
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('orders')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    }
-                    final docs = snapshot.data?.docs ?? [];
-                    double totalRevenue = 0;
-                    final Map<String, double> dailyRevenue = {};
-                    for (final doc in docs) {
-                      final data = doc.data() as Map<String, dynamic>?;
-                      if (data == null ||
-                          data['totalPrice'] == null ||
-                          data['createdAt'] == null) {
-                        continue;
-                      }
-                      double price = 0;
-                      final value = data['totalPrice'];
-                      if (value is int) {
-                        price = value.toDouble();
-                      } else if (value is double) {
-                        price = value;
-                      } else if (value is String) {
-                        price = double.tryParse(value) ?? 0;
-                      }
-                      totalRevenue += price;
-                      final createdAt = data['createdAt'];
-                      DateTime date;
-                      if (createdAt is Timestamp) {
-                        date = createdAt.toDate();
-                      } else if (createdAt is DateTime) {
-                        date = createdAt;
-                      } else {
-                        continue;
-                      }
-                      final key =
-                          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                      dailyRevenue[key] = (dailyRevenue[key] ?? 0) + price;
-                    }
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'ยอดขายรวม: ฿${totalRevenue.toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'ยอดขายรายวัน:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        ...dailyRevenue.entries.map(
-                          (entry) => Text(
-                            '${entry.key}: ฿${entry.value.toStringAsFixed(2)}',
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('ปิด'),
-                ),
-              ],
-            ),
-          );
-        },
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const SalesReportView(),
+          ),
+        ),
       ),
       _QuickAction(
         title: 'จัดการสต็อก',
         icon: Icons.inventory,
         color: Colors.orange,
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('ไปที่แท็บ Products เพื่อจัดการสต็อก'),
-            ),
-          );
+          final ownerState =
+              context.findAncestorStateOfType<_OwnerDashboardViewState>();
+          if (ownerState != null) {
+            ownerState.switchToTab(1);
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const OwnerDashboardView(),
+              ),
+            );
+          }
         },
       ),
     ];
@@ -861,7 +793,7 @@ class OwnerDashboardTab extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -871,13 +803,13 @@ class OwnerDashboardTab extends StatelessWidget {
             Colors.white,
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+  borderRadius: BorderRadius.circular(18),
         border: Border.all(color: color.withOpacity(0.18)),
         boxShadow: [
           BoxShadow(
             color: color.withOpacity(0.08),
-            offset: const Offset(0, 12),
-            blurRadius: 16,
+            offset: const Offset(0, 8),
+            blurRadius: 12,
           ),
         ],
       ),
@@ -885,17 +817,18 @@ class OwnerDashboardTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          const SizedBox(height: 2),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: 18),
               ),
               const Spacer(),
               if (type == 'revenue_today')
@@ -904,8 +837,8 @@ class OwnerDashboardTab extends StatelessWidget {
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const SizedBox(
-                        width: 40,
-                        height: 24,
+                        width: 36,
+                        height: 22,
                         child: Center(
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
@@ -933,7 +866,7 @@ class OwnerDashboardTab extends StatelessWidget {
                     return Text(
                       text,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: color,
                       ),
@@ -948,7 +881,7 @@ class OwnerDashboardTab extends StatelessWidget {
                     return Text(
                       '$count',
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: color,
                       ),
@@ -957,11 +890,12 @@ class OwnerDashboardTab extends StatelessWidget {
                 ),
             ],
           ),
+          const SizedBox(height: 10),
           Text(
             title,
             style: TextStyle(
               color: Colors.brown.shade700,
-              fontSize: 12.5,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
             maxLines: 2,
@@ -1013,15 +947,20 @@ class OwnerDashboardTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: Text(
-                  action.title,
-                  style: TextStyle(
-                    color: action.color,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    action.title,
+                    style: TextStyle(
+                      color: action.color,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1109,7 +1048,7 @@ class OwnerProductsTab extends StatelessWidget {
           return const Center(child: Text('No products yet. Tap + to add.'));
         }
         return ListView.separated(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
           itemBuilder: (context, i) {
             final doc = docs[i];
             final data = doc.data();
@@ -1157,23 +1096,23 @@ class OwnerProductsTab extends StatelessWidget {
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: lightBorder.withOpacity(0.8)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: lightBorder.withOpacity(0.65)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    offset: const Offset(0, 4),
-                    blurRadius: 10,
+                    color: Colors.black.withOpacity(0.035),
+                    offset: const Offset(0, 3),
+                    blurRadius: 8,
                   ),
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ProductThumbnail(imageUrl: imageUrl),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1188,12 +1127,13 @@ class OwnerProductsTab extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: darkBrown,
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
                               PopupMenuButton<String>(
+                                iconSize: 20,
                                 elevation: 4,
                                 onSelected: (v) async {
                                   if (v == 'delete') {
@@ -1717,20 +1657,21 @@ class OwnerProductsTab extends StatelessWidget {
                           ),
                           if (category.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.only(top: 3),
                               child: Text(
                                 category,
                                 style: TextStyle(
                                   color: accent,
                                   fontWeight: FontWeight.w600,
+                                  fontSize: 11,
                                 ),
                               ),
                             ),
                           Padding(
-                            padding: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.only(top: 6),
                             child: Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
+                              spacing: 6,
+                              runSpacing: 4,
                               children: [
                                 _InfoPill(
                                   label: '฿${basePrice.toStringAsFixed(2)}',
@@ -1748,12 +1689,16 @@ class OwnerProductsTab extends StatelessWidget {
                           ),
                           if (description.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.only(top: 6),
                               child: Text(
                                 description,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: Colors.grey.shade700),
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 11,
+                                  height: 1.25,
+                                ),
                               ),
                             ),
                         ],
@@ -1780,26 +1725,26 @@ class _ProductThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        width: 72,
-        height: 72,
+        width: 56,
+        height: 56,
         color: Colors.brown.shade100,
         child: imageUrl.isNotEmpty
             ? (imageUrl.startsWith('http')
                 ? Image.network(
                     imageUrl,
                     fit: BoxFit.cover,
-                    width: 72,
-                    height: 72,
+                    width: 56,
+                    height: 56,
                     errorBuilder: (context, _, __) =>
                         const Icon(Icons.image_not_supported_outlined),
                   )
                 : Image.asset(
                     imageUrl,
                     fit: BoxFit.cover,
-                    width: 72,
-                    height: 72,
+                    width: 56,
+                    height: 56,
                     errorBuilder: (context, _, __) =>
                         const Icon(Icons.image_not_supported_outlined),
                   ))
@@ -1820,22 +1765,22 @@ class _InfoPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 6),
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w600,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ],
@@ -1914,46 +1859,282 @@ class OwnerMessagesTab extends StatelessWidget {
 
 class OwnerProfileTab extends StatelessWidget {
   const OwnerProfileTab();
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
+  Future<void> _handleEditProfile(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      'แก้ไขโปรไฟล์',
+      'คุณต้องการแก้ไขโปรไฟล์นี้ใช่หรือไม่?',
+    );
+    if (!confirmed || !context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const EditProfileView()),
+    );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      'ออกจากระบบ',
+      'คุณต้องการออกจากระบบหรือไม่?',
+    );
+    if (!confirmed || !context.mounted) return;
+    await FirebaseAuth.instance.signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        ListTile(
-          leading: const Icon(Icons.store, size: 40, color: Color(0xFF4E342E)),
-          title: const Text('ข้อมูลร้าน/โปรไฟล์'),
-          subtitle: const Text('ดูและแก้ไขข้อมูลร้าน/เจ้าของร้าน'),
+    final theme = Theme.of(context);
+    final user = FirebaseAuth.instance.currentUser;
+    final ownerName = (user?.displayName?.trim().isNotEmpty ?? false)
+        ? user!.displayName!
+        : 'เจ้าของร้าน Homemade Bliss';
+    final email = (user?.email?.trim().isNotEmpty ?? false)
+        ? user!.email!
+        : 'ยังไม่มีอีเมลที่บันทึกไว้';
+    final phone = (user?.phoneNumber?.trim().isNotEmpty ?? false)
+        ? user!.phoneNumber!
+        : null;
+    final createdAt = user?.metadata.creationTime;
+    final lastSignIn = user?.metadata.lastSignInTime;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF4E7DC), Color(0xFFE8D9CF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: Colors.white.withOpacity(0.4),
+                      child: const Icon(Icons.storefront, size: 26, color: Color(0xFF6F574B)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ownerName,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                              color: const Color(0xFF3C312C),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: const Color(0xFF6D625C),
+                            ),
+                          ),
+                          if (phone != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'โทรศัพท์: $phone',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: const Color(0xFF6D625C),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    const _ProfileInfoChip(
+                      icon: Icons.verified_user_outlined,
+                      text: 'สิทธิ์: เจ้าของร้าน',
+                    ),
+                    if (createdAt != null)
+                      _ProfileInfoChip(
+                        icon: Icons.calendar_today_outlined,
+                        text: 'เข้าร่วม: ${_formatDate(createdAt)}',
+                      ),
+                    if (lastSignIn != null)
+                      _ProfileInfoChip(
+                        icon: Icons.history_toggle_off,
+                        text: 'เข้าสู่ระบบล่าสุด: ${_formatDate(lastSignIn)}',
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            'การจัดการบัญชี',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: const Color(0xFF4E342E),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _ProfileActionTile(
+            icon: Icons.edit_outlined,
+            title: 'แก้ไขโปรไฟล์',
+            subtitle: 'ปรับข้อมูลร้านและช่องทางติดต่อให้เป็นปัจจุบัน',
+            color: const Color(0xFF9E857A),
+            onTap: () => _handleEditProfile(context),
+          ),
+          const SizedBox(height: 10),
+          _ProfileActionTile(
+            icon: Icons.logout,
+            title: 'ออกจากระบบ',
+            subtitle: 'ออกจากระบบเพื่อสลับบัญชีหรือป้องกันการใช้งาน',
+            color: const Color(0xFFB98068),
+            onTap: () => _handleLogout(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileInfoChip extends StatelessWidget {
+  const _ProfileInfoChip({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF5F4A40)),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFF5F4A40),
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileActionTile extends StatelessWidget {
+  const _ProfileActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: color.withOpacity(0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.1),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Color(0xFF3E312C),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF7A6E64),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF9C8A7F)),
+            ],
+          ),
         ),
-        const Divider(),
-        ListTile(
-          leading: const Icon(Icons.edit),
-          title: const Text('แก้ไขโปรไฟล์'),
-          onTap: () async {
-            final confirmed = await showConfirmDialog(
-              context,
-              'แก้ไขโปรไฟล์',
-              'คุณต้องการแก้ไขโปรไฟล์นี้ใช่หรือไม่?',
-            );
-            if (!confirmed) return;
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const EditProfileView()),
-            );
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.logout),
-          title: const Text('ออกจากระบบ'),
-          onTap: () async {
-            final confirmed = await showConfirmDialog(
-              context,
-              'ออกจากระบบ',
-              'คุณต้องการออกจากระบบหรือไม่?',
-            );
-            if (!confirmed) return;
-            await FirebaseAuth.instance.signOut();
-          },
-        ),
-      ],
+      ),
     );
   }
 }

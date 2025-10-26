@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:homemade_bliss/util/theme/theme.dart';
 import 'chat_view.dart';
 
 class ChatInboxView extends StatelessWidget {
@@ -15,11 +16,11 @@ class ChatInboxView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ข้อความลูกค้า', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF74512D),
+        backgroundColor: kPrimaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      backgroundColor: const Color(0xFFF8F4E1),
+  backgroundColor: const Color(0xFFF8F2ED),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: (ownerFilters.length == 1
                 ? FirebaseFirestore.instance
@@ -37,9 +38,9 @@ class ChatInboxView extends StatelessWidget {
             return const Center(child: Text('ยังไม่มีแชทจากลูกค้า'));
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
             itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, i) {
               final data = docs[i].data();
               final chatId = docs[i].id;
@@ -49,11 +50,12 @@ class ChatInboxView extends StatelessWidget {
               final profileUrl = data['customerProfileUrl'] as String?;
               final unreadCount = data['unreadCount'] ?? 0;
               return Card(
-                elevation: 2,
+                elevation: 1.5,
+                margin: EdgeInsets.zero,
                 color: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   onTap: () async {
                     final currentOwner = FirebaseAuth.instance.currentUser;
                     final result = await Navigator.of(context).push(
@@ -75,52 +77,73 @@ class ChatInboxView extends StatelessWidget {
                     }
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                     child: Row(
                       children: [
                         CircleAvatar(
-                          radius: 26,
+                          radius: 20,
                           backgroundColor: const Color(0xFFAF8F6F),
                           backgroundImage: profileUrl != null && profileUrl.isNotEmpty
                               ? NetworkImage(profileUrl)
                               : null,
                           child: profileUrl == null || profileUrl.isEmpty
-                              ? Text(customerName.isNotEmpty ? customerName[0] : '?', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20))
+                              ? Text(
+                                  customerName.isNotEmpty ? customerName[0] : '?',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+                                )
                               : null,
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  Text(customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  Expanded(
+                                    child: Text(
+                                      customerName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                                    ),
+                                  ),
                                   if (unreadCount > 0)
                                     Container(
-                                      margin: const EdgeInsets.only(left: 8),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      margin: const EdgeInsets.only(left: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
                                         color: Colors.redAccent,
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: Text('$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                      child: Text(
+                                        '$unreadCount',
+                                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
                                     ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(lastMsg, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: Colors.brown)),
+                              const SizedBox(height: 2),
+                              Text(
+                                lastMsg,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12, color: kPrimaryColor),
+                              ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             if (lastTime != null)
-                              Text('${lastTime.hour}:${lastTime.minute.toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 12, color: Colors.brown)),
-                            const SizedBox(height: 8),
-                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.brown),
+                              Text(
+                                '${lastTime.hour}:${lastTime.minute.toString().padLeft(2, '0')}',
+                                style: const TextStyle(fontSize: 11, color: kPrimaryColor, fontWeight: FontWeight.w600),
+                              ),
+                            const SizedBox(height: 6),
+                            const Icon(Icons.arrow_forward_ios, size: 14, color: kPrimaryColor),
                           ],
                         ),
                       ],

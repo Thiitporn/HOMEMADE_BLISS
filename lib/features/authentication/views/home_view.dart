@@ -263,14 +263,14 @@ class _HomeViewState extends State<HomeView> {
                   flex: 7,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F4F0),
+                      color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: lightBrown, width: 1),
+                      border: Border.all(color: const Color(0xFFB8967F), width: 1.1),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.brown.shade100.withOpacity(0.13),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
+                          color: const Color(0xFFB08968).withOpacity(0.18),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),

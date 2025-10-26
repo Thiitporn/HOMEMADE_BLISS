@@ -11,7 +11,7 @@ class NotificationsView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('การแจ้งเตือน', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF74512D),
+    backgroundColor: const Color(0xFF9E857A),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -32,7 +32,7 @@ class NotificationsView extends StatelessWidget {
           ),
         ],
       ),
-      backgroundColor: const Color(0xFFF8F4E1),
+  backgroundColor: const Color(0xFFF8F2ED),
   body: StreamBuilder<List<in_app.NotificationModel>>(
         stream: in_app.NotificationService.getNotifications(),
         builder: (context, snapshot) {
@@ -77,7 +77,7 @@ class NotificationsView extends StatelessWidget {
   }
 
   Widget _buildNotificationCard(BuildContext context, in_app.NotificationModel notification) {
-    final Color darkBrown = const Color(0xFF74512D);
+  final Color darkBrown = const Color(0xFF9E857A);
     final timeAgo = _getTimeAgo(notification.createdAt);
 
     return Dismissible(
@@ -219,7 +219,7 @@ class NotificationsView extends StatelessWidget {
       case 'delivery':
         return Colors.orange;
       default:
-        return const Color(0xFF74512D);
+  return const Color(0xFF9E857A);
     }
   }
 

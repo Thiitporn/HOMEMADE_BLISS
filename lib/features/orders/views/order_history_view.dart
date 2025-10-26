@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:homemade_bliss/util/theme/theme.dart';
 import '../controllers/orders_controller.dart';
 import '../models/order_model.dart';
 import '../../chat/chat_view.dart';
@@ -41,7 +42,7 @@ class OrderHistoryView extends StatelessWidget {
       case 'paid':
         return Colors.teal;
       default:
-        return const Color(0xFF74512D);
+        return kPrimaryColor;
     }
   }
 
@@ -54,11 +55,11 @@ class OrderHistoryView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ประวัติคำสั่งซื้อ', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF74512D),
+  backgroundColor: const Color(0xFF9E857A),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      backgroundColor: const Color(0xFFF8F4E1),
+  backgroundColor: const Color(0xFFF8F2ED),
       body: StreamBuilder<List<OrderModel>>(
         stream: OrdersController().userOrders(user.uid),
         builder: (context, snapshot) {
@@ -145,13 +146,13 @@ class OrderHistoryView extends StatelessWidget {
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 20,
-                                                color: Color(0xFF74512D),
+                                                color: kPrimaryColor,
                                               ),
                                             ),
                                             const SizedBox(height: 6),
                                             Row(
                                               children: [
-                                                Icon(Icons.calendar_today, size: 18, color: Colors.brown[300]),
+                                                const Icon(Icons.calendar_today, size: 18, color: kPrimaryColor),
                                                 const SizedBox(width: 8),
                                                 Text(
                                                   dateStr,
@@ -184,7 +185,7 @@ class OrderHistoryView extends StatelessWidget {
                                                   const SizedBox(height: 12),
                                                   Row(
                                                     children: [
-                                                      Icon(Icons.attach_money, size: 20, color: Colors.brown[300]),
+                                                      const Icon(Icons.attach_money, size: 20, color: kPrimaryColor),
                                                       const SizedBox(width: 8),
                                                       const Text('ยอดสุทธิ', style: TextStyle(fontWeight: FontWeight.w600)),
                                                       const SizedBox(width: 6),
@@ -204,7 +205,7 @@ class OrderHistoryView extends StatelessWidget {
                                             ),
                                             const SizedBox(height: 10),
                                             if (items.isEmpty)
-                                              const Text('ไม่พบรายการสินค้า', style: TextStyle(color: Colors.brown)),
+                                              const Text('ไม่พบรายการสินค้า', style: TextStyle(color: kPrimaryColor)),
                                             ...items.map((item) {
                                               final name = (item['name'] ?? '-').toString();
                                               final qty = item['quantity'] ?? 1;
@@ -275,7 +276,7 @@ class OrderHistoryView extends StatelessWidget {
                                                   Row(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      const Icon(Icons.person, color: Color(0xFF74512D)),
+                                                      const Icon(Icons.person, color: Color(0xFF9E857A)),
                                                       const SizedBox(width: 10),
                                                       Expanded(
                                                         child: Text('ชื่อ: ${o.name}', style: const TextStyle(fontSize: 14, color: Color(0xFF5D4037))),
@@ -286,7 +287,7 @@ class OrderHistoryView extends StatelessWidget {
                                                   Row(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      const Icon(Icons.location_on, color: Color(0xFF74512D)),
+                                                      const Icon(Icons.location_on, color: Color(0xFF9E857A)),
                                                       const SizedBox(width: 10),
                                                       Expanded(
                                                         child: Text('ที่อยู่: ${o.address}', style: const TextStyle(fontSize: 14, color: Color(0xFF5D4037))),
@@ -296,7 +297,7 @@ class OrderHistoryView extends StatelessWidget {
                                                   const SizedBox(height: 10),
                                                   Row(
                                                     children: [
-                                                      const Icon(Icons.phone, color: Color(0xFF74512D)),
+                                                      const Icon(Icons.phone, color: Color(0xFF9E857A)),
                                                       const SizedBox(width: 10),
                                                       Text('เบอร์: ${o.phone}', style: const TextStyle(fontSize: 14, color: Color(0xFF5D4037))),
                                                     ],
@@ -314,7 +315,7 @@ class OrderHistoryView extends StatelessWidget {
                                         width: double.infinity,
                                         child: ElevatedButton.icon(
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF74512D),
+                                            backgroundColor: const Color(0xFF9E857A),
                                             foregroundColor: Colors.white,
                                             padding: const EdgeInsets.symmetric(vertical: 16),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -374,9 +375,9 @@ class OrderHistoryView extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(dateStr, style: const TextStyle(fontSize: 12, color: Colors.brown)),
+                            Text(dateStr, style: const TextStyle(fontSize: 12, color: kPrimaryColor)),
                             const SizedBox(height: 8),
-                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.brown),
+                            const Icon(Icons.arrow_forward_ios, size: 16, color: kPrimaryColor),
                           ],
                         ),
                       ],

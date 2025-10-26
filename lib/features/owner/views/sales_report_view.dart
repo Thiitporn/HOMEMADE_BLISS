@@ -906,7 +906,7 @@ class _EmptyPlaceholder extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F4EE),
+  color: const Color(0xFFF8F2ED),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE9E1D8)),
       ),
@@ -956,10 +956,8 @@ class _OverviewMetrics extends StatelessWidget {
           runSpacing: spacing,
           children: metrics.map((metric) {
             final tileWidth = columns == 1 ? availableWidth : itemWidth;
-            final tileHeight = tileWidth * 1.12;
             return SizedBox(
               width: tileWidth,
-              height: tileHeight,
               child: _MetricTile(data: metric),
             );
           }).toList(),
@@ -978,67 +976,76 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: data.gradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.22)),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.32),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(
-              data.icon,
-              color: const Color(0xFF3C3A37),
-              size: 18,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  data.icon,
+                  color: const Color(0xFF3C3A37),
+                  size: 18,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          Text(
-            data.value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF3C3A37),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              data.value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF2F2B28),
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-          const Spacer(),
+          const SizedBox(height: 6),
           Text(
             data.title,
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.titleSmall?.copyWith(
               color: const Color(0xFF514C47),
               fontWeight: FontWeight.w600,
+              fontSize: 14,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            softWrap: true,
           ),
           if (data.description != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               data.description!,
-              style: theme.textTheme.labelSmall?.copyWith(
+              style: theme.textTheme.bodySmall?.copyWith(
                 color: const Color(0xFF7A746D),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              softWrap: true,
             ),
           ],
         ],
@@ -1340,7 +1347,7 @@ class _SalesTrendChart extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F4EE),
+          color: const Color(0xFFF8F2ED),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -1366,7 +1373,7 @@ class _SalesTrendChart extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F4EE),
+          color: const Color(0xFFF8F2ED),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -1492,7 +1499,7 @@ class _PaymentStatusSummary extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F4EE),
+              color: const Color(0xFFF8F2ED),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(

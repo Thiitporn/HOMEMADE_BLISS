@@ -16,7 +16,7 @@ Homemade Bliss คือแอปพลิเคชันไมโครคอ�
 - [Resources](#resources)
 
 ## Overview
-- ลูกค้าเลือกสินค้า จัดการตะกร้า ใช้คูปอง ชำระเงินผ่านบัตรเครดิต (Stripe) หรือพร้อมเพย์ (Omise promptpay ใน backend ตัวอย่าง) พร้อมรับการแจ้งเตือนสถานะต่าง ๆ
+- ลูกค้าเลือกสินค้า จัดการตะกร้า ใช้คูปอง ชำระเงินผ่านบัตรเครดิต (Stripe) พร้อมรับการแจ้งเตือนสถานะต่าง ๆ
 - เจ้าของร้านบริหารสินค้า สต็อก คำสั่งซื้อ แชทกับลูกค้า และดูสถิติสรุปบน Owner Dashboard
 - ใช้ Firebase ในการจัดการ Auth, Firestore, Storage รวมถึง push/local notifications ผ่าน `flutter_local_notifications`
 - รองรับการขยายฟีเจอร์อื่น ๆ (personalization, promotions, storefront) ด้วยโครงสร้างโค้ดแบบ feature-first ภายใต้ `lib/features/*`
@@ -31,7 +31,7 @@ Homemade Bliss คือแอปพลิเคชันไมโครคอ�
 - **Frontend**: Flutter (Material 3 style, Provider + ChangeNotifier, Firebase SDKs)
 - **Backend (optional demo)**: Node.js (Express, Stripe SDK, Omise/Opn promptpay ตัวอย่าง), dotenv สำหรับ environment config
 - **Cloud**: Firebase Authentication, Cloud Firestore, Firebase Storage
-- **Payments**: Stripe (บัตรเครดิต) + โค้ดตัวอย่าง Omise PromptPay สำหรับ QR
+- **Payments**: Stripe (บัตรเครดิต)
 - **Notifications**: flutter_local_notifications (แจ้งเตือนในเครื่อง)
 
 ## Requirements

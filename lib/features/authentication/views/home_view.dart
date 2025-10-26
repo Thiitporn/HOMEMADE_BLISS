@@ -18,6 +18,120 @@ class HomeView extends StatefulWidget {
   State<HomeView> createState() => _HomeViewState();
 }
 
+class _CustomerProfileInfoChip extends StatelessWidget {
+  const _CustomerProfileInfoChip({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.65),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF5F4A40)),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFF5F4A40),
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomerProfileActionTile extends StatelessWidget {
+  const _CustomerProfileActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: color.withOpacity(0.14)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.12),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Color(0xFF3E312C),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF7A6E64),
+                        height: 1.28,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF9C8A7F)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeViewState extends State<HomeView> {
   bool isLoading = false;
 
@@ -101,17 +215,6 @@ class _HomeViewState extends State<HomeView> {
     final Color cream = const Color(0xFFFAF3EF);
 
     final cart = context.watch<CartController>();
-
-
-  // ฟังก์ชันเปรียบเทียบ list ของ map (เป็น method ของคลาส)
-  bool _listEquals(List<Map<String, String>> a, List<Map<String, String>> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i]['en'] != b[i]['en'] || a[i]['th'] != b[i]['th']) return false;
-    }
-    return true;
-  }
-
     Widget buildHomeTab() {
       return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance.collection('products').snapshots(),
@@ -491,7 +594,7 @@ class _HomeViewState extends State<HomeView> {
                                       String? selectedVariantName;
                                       int selectedQty = 1;
                                       final selectedVariant = ValueNotifier<Map<String, dynamic>?>(null);
-                                      await showModalBottomSheet(
+                                      final addedToCart = await showModalBottomSheet<bool>(
                                         context: context,
                                         isScrollControlled: true,
                                         shape: const RoundedRectangleBorder(
@@ -503,7 +606,7 @@ class _HomeViewState extends State<HomeView> {
                                               bottom: MediaQuery.of(context).viewInsets.bottom,
                                               left: 16, right: 16, top: 24),
                                             child: StatefulBuilder(
-                                              builder: (context, setState) {
+                                              builder: (context, sheetSetState) {
                                                 return Column(
                                                   mainAxisSize: MainAxisSize.min,
                                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,7 +721,7 @@ class _HomeViewState extends State<HomeView> {
                                                               ),
                                                               onTap: isAvailable
                                                                   ? () {
-                                                                      setState(() {
+                                                                      sheetSetState(() {
                                                                         selectedVariantName = v['name'];
                                                                         selectedVariant.value = v;
                                                                         selectedQty = 1;
@@ -638,7 +741,7 @@ class _HomeViewState extends State<HomeView> {
                                                           mainAxisAlignment: MainAxisAlignment.center,
                                                           children: [
                                                             GestureDetector(
-                                                              onTap: selectedQty > 1 ? () => setState(() => selectedQty--) : null,
+                                                              onTap: selectedQty > 1 ? () => sheetSetState(() => selectedQty--) : null,
                                                               child: Container(
                                                                 width: 44,
                                                                 height: 44,
@@ -663,8 +766,8 @@ class _HomeViewState extends State<HomeView> {
                                                               ),
                                                             ),
                                                             GestureDetector(
-                                                              onTap: selectedQty < (selectedVariant.value!['stock'] < 10 ? selectedVariant.value!['stock'] : 10)
-                                                                  ? () => setState(() => selectedQty++)
+                                onTap: selectedQty < (selectedVariant.value!['stock'] < 10 ? selectedVariant.value!['stock'] : 10)
+                                  ? () => sheetSetState(() => selectedQty++)
                                                                   : null,
                                                               child: Container(
                                                                 width: 44,
@@ -728,7 +831,7 @@ class _HomeViewState extends State<HomeView> {
                                                           ),
                                                           onPressed: selectedVariant.value != null && selectedVariant.value!['stock'] > 0 && !isLoading
                                                               ? () async {
-                                                                  setState(() => isLoading = true);
+                                                                  sheetSetState(() => isLoading = true);
                                                                   await Future.delayed(const Duration(milliseconds: 600));
                                                                   cart.addItem(
                                                                     id: filteredDocs[i].id + '_' + selectedVariant.value!['name'],
@@ -738,14 +841,8 @@ class _HomeViewState extends State<HomeView> {
                                                                     imageUrl: imageUrl.startsWith('http') ? imageUrl : null,
                                                                     qty: selectedQty,
                                                                   );
-                                                                  Navigator.pop(context);
-                                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                                    SnackBar(content: Text('เพิ่มลงตะกร้าแล้ว')),
-                                                                  );
-                                                                  setState(() {
-                                                                    selectedNav = 1;
-                                                                    isLoading = false;
-                                                                  });
+                                                                  sheetSetState(() => isLoading = false);
+                                                                  Navigator.pop(context, true);
                                                                 }
                                                               : null,
                                                         ),
@@ -758,6 +855,13 @@ class _HomeViewState extends State<HomeView> {
                                           );
                                         },
                                       );
+                                      selectedVariant.dispose();
+                                      if (!mounted) return;
+                                      if (addedToCart == true) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('เพิ่มลงตะกร้าแล้ว')),
+                                        );
+                                      }
                                     },
                                     child: const Text(
                                       'เพิ่มในตะกร้า',
@@ -791,7 +895,9 @@ class _HomeViewState extends State<HomeView> {
                                         imageAsset: imageUrl.startsWith('http') ? null : imageUrl,
                                         imageUrl: imageUrl.startsWith('http') ? imageUrl : null,
                                       );
-                                      setState(() => selectedNav = 1);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('เพิ่มลงตะกร้าแล้ว')),
+                                      );
                                     },
                                     child: const Text(
                                       'เพิ่มในตะกร้า',
@@ -818,16 +924,7 @@ class _HomeViewState extends State<HomeView> {
       );
     },
   );
-
-  // ฟังก์ชันเปรียบเทียบ list ของ map
     }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
-  }
-
 
     Widget buildOrdersTab() {
       if (cart.items.isEmpty) {
@@ -1003,7 +1100,7 @@ class _HomeViewState extends State<HomeView> {
                             color: Colors.brown.shade50,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(Icons.delete_outline, color: Color(0xFF8D6E63), size: 22),
+                          child: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
                         ),
                       ),
                     ),
@@ -1017,16 +1114,172 @@ class _HomeViewState extends State<HomeView> {
     }
 
     Widget buildProfileTab() {
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.person)),
-            title: const Text('Your Profile'),
-            subtitle: const Text('View and edit your information'),
-            trailing: IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () async {
+      String formatDate(DateTime? date) {
+        if (date == null) return '-';
+        final day = date.day.toString().padLeft(2, '0');
+        final month = date.month.toString().padLeft(2, '0');
+        return '$day/$month/${date.year}';
+      }
+
+      final theme = Theme.of(context);
+      final user = FirebaseAuth.instance.currentUser;
+      final displayName = (user?.displayName?.trim().isNotEmpty ?? false)
+          ? user!.displayName!
+          : 'ลูกค้า Homemade Bliss';
+      final email = (user?.email?.trim().isNotEmpty ?? false)
+          ? user!.email!
+          : 'ยังไม่มีอีเมลที่บันทึกไว้';
+      final phone = (user?.phoneNumber?.trim().isNotEmpty ?? false)
+          ? user!.phoneNumber!
+          : null;
+      final createdAt = user?.metadata.creationTime;
+      final lastSignIn = user?.metadata.lastSignInTime;
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF4E7DC), Color(0xFFE8D9CF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundColor: Colors.white.withOpacity(0.4),
+                        child: const Icon(Icons.person_outline, size: 26, color: Color(0xFF6F574B)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                                color: const Color(0xFF3C312C),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              email,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: const Color(0xFF6D625C),
+                              ),
+                            ),
+                            if (phone != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'โทรศัพท์: $phone',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: const Color(0xFF6D625C),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'จัดการข้อมูลบัญชีและการสั่งซื้อของคุณได้จากหน้าโปรไฟล์นี้',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF6D625C),
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      const _CustomerProfileInfoChip(
+                        icon: Icons.favorite_outline,
+                        text: 'สถานะ: ลูกค้าประจำ',
+                      ),
+                      if (createdAt != null)
+                        _CustomerProfileInfoChip(
+                          icon: Icons.calendar_today_outlined,
+                          text: 'เริ่มใช้งาน: ${formatDate(createdAt)}',
+                        ),
+                      if (lastSignIn != null)
+                        _CustomerProfileInfoChip(
+                          icon: Icons.history_toggle_off,
+                          text: 'เข้าสู่ระบบล่าสุด: ${formatDate(lastSignIn)}',
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'การตั้งค่าบัญชี',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: darkBrown,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _CustomerProfileActionTile(
+              icon: Icons.history,
+              title: 'ประวัติคำสั่งซื้อ',
+              subtitle: 'ย้อนดูการสั่งซื้อที่ผ่านมาและสถานะล่าสุด',
+              color: mediumBrown,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OrderHistoryView()),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            _CustomerProfileActionTile(
+              icon: Icons.edit_outlined,
+              title: 'แก้ไขโปรไฟล์',
+              subtitle: 'ปรับแต่งข้อมูลส่วนตัว',
+              color: const Color(0xFFB28976),
+              onTap: () async {
+                final confirmed = await showConfirmDialog(
+                  context,
+                  'แก้ไขโปรไฟล์',
+                  'คุณต้องการแก้ไขโปรไฟล์นี้ใช่หรือไม่?',
+                );
+                if (!confirmed) return;
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const EditProfileView()),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            _CustomerProfileActionTile(
+              icon: Icons.logout,
+              title: 'ออกจากระบบ',
+              subtitle: 'ออกจากระบบเพื่อป้องกันการใช้งานที่ไม่ตั้งใจ',
+              color: const Color(0xFFD28C74),
+              onTap: () async {
                 final confirmed = await showConfirmDialog(
                   context,
                   'ออกจากระบบ',
@@ -1036,33 +1289,8 @@ class _HomeViewState extends State<HomeView> {
                 await FirebaseAuth.instance.signOut();
               },
             ),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.history),
-            title: const Text('ประวัติคำสั่งซื้อ'),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const OrderHistoryView()),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: const Text('แก้ไขโปรไฟล์'),
-            onTap: () async {
-              final confirmed = await showConfirmDialog(
-                context,
-                'แก้ไขโปรไฟล์',
-                'คุณต้องการแก้ไขโปรไฟล์นี้ใช่หรือไม่?',
-              );
-              if (!confirmed) return;
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const EditProfileView()),
-              );
-            },
-          ),
-        ],
+          ],
+        ),
       );
     }
 
@@ -1086,21 +1314,7 @@ class _HomeViewState extends State<HomeView> {
             letterSpacing: 1,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Color(0xFF4E342E)),
-            onPressed: () async {
-              final confirmed = await showConfirmDialog(
-                context,
-                'ออกจากระบบ',
-                'คุณต้องการออกจากระบบหรือไม่?',
-              );
-              if (!confirmed) return;
-              await FirebaseAuth.instance.signOut();
-              // หลังจาก sign out จะกลับไปหน้า Login อัตโนมัติ
-            },
-          ),
-        ],
+        actions: const [],
       ),
       body: pages[selectedNav],
       bottomNavigationBar: BottomNavigationBar(

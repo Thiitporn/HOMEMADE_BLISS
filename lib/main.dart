@@ -13,6 +13,7 @@ import 'features/orders/views/success_view.dart';
 import 'common/stripe_config.dart';
 import 'common/notification_service.dart';
 import 'common/push_notification_service.dart';
+import 'util/theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +43,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       navigatorKey: NotificationService.navigatorKey,
       title: 'Homemade Bliss',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: TAppTheme.lightTheme,
+      darkTheme: TAppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, authSnap) {

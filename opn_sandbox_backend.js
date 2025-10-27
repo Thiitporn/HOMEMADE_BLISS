@@ -8,13 +8,21 @@ require('dotenv').config();
 // });
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '12mb' }));
 
 // Stripe setup
 const Stripe = require('stripe');
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY;
 const stripe = Stripe(STRIPE_SECRET_KEY);
+
+// Cloudinary setup
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dcxltgxlw',
+  api_key: process.env.CLOUDINARY_API_KEY || '977985198873474',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'RKdZPo6DYm5Jz4W4QbMrKToWdPw',
+});
 
 // Expose publishable key for the client to use (test only; do not expose secret key)
 app.get('/stripe-publishable-key', (req, res) => {
@@ -73,6 +81,22 @@ app.post('/create-promptpay', async (req, res) => {
   } catch (e) {
     console.error('PromptPay error:', e);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Upload image to Cloudinary (accepts base64 data URI in JSON { image: 'data:image/png;base64,...', folder?: 'optional' })
+app.post('/upload-image', async (req, res) => {
+  try {
+    const { image, folder } = req.body || {};
+    if (!image) return res.status(400).json({ error: 'No image provided' });
+    // Upload to Cloudinary; image can be a data URI or remote URL
+    const uploadOptions = {};
+    if (folder) uploadOptions.folder = folder;
+    const result = await cloudinary.uploader.upload(image, uploadOptions);
+    return res.json({ url: result.secure_url, public_id: result.public_id, raw: result });
+  } catch (e) {
+    console.error('Cloudinary upload error:', e);
+    return res.status(500).json({ error: e.message || 'Upload failed' });
   }
 });
 

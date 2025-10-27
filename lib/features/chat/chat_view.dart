@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:homemade_bliss/util/theme/theme.dart';
 import 'chat_service.dart';
 import '../../common/dialog_utils.dart';
+import '../../services/cloudinary_service.dart';
 
 class ChatView extends StatefulWidget {
   final String chatId;
@@ -35,6 +39,7 @@ class _ChatViewState extends State<ChatView> {
   String? _ownerUid;
   String? _ownerDisplayName;
   bool _contextReady = false;
+  bool _isUploadingImage = false;
 
   Future<String> getMyDisplayName() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -112,58 +117,38 @@ class _ChatViewState extends State<ChatView> {
     });
   }
 
-  void _showImageUrlDialog() async {
-    final urlController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('วางลิงก์รูปภาพ'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: urlController,
-              decoration: const InputDecoration(hintText: 'https://...'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'กรุณาวางลิงก์รูป';
-                final url = value.trim();
-                final isImage = (url.startsWith('http://') || url.startsWith('https://')) && (url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png'));
-                if (!isImage) return 'ลิงก์ต้องเป็นไฟล์รูป .jpg .jpeg .png';
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('ยกเลิก'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  final url = urlController.text.trim();
-                  final displayName = await getMyDisplayName();
-                  await _chatService.sendMessage(
-                    chatId: widget.chatId,
-                    senderUid: myUid,
-                    text: url,
-                    imageUrl: '',
-                    ownerUid: _resolveOwnerUidForUpdate(),
-                    senderDisplayName: displayName,
-                  );
-                  if (_isOwner && _ownerUid != myUid && myUid.isNotEmpty && mounted) {
-                    setState(() => _ownerUid = myUid);
-                  }
-                  if (mounted) Navigator.of(context).pop();
-                }
-              },
-              child: const Text('ส่ง'),
-            ),
-          ],
-        );
-      },
-    );
+  Future<void> _pickAndUploadImage() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1600);
+      if (picked == null) return;
+
+      setState(() => _isUploadingImage = true);
+
+      final file = File(picked.path);
+      final uploader = CloudinaryService();
+      final secureUrl = await uploader.uploadFile(file, folder: 'chat-uploads');
+
+      final displayName = await getMyDisplayName();
+      await _chatService.sendMessage(
+        chatId: widget.chatId,
+        senderUid: myUid,
+        text: '[รูปภาพจาก Cloudinary]',
+        imageUrl: secureUrl,
+        ownerUid: _resolveOwnerUidForUpdate(),
+        senderDisplayName: displayName,
+      );
+      if (_isOwner && _ownerUid != myUid && myUid.isNotEmpty && mounted) {
+        setState(() => _ownerUid = myUid);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('อัพโหลดรูปไม่สำเร็จ: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
+    }
   }
 
   @override
@@ -214,8 +199,8 @@ class _ChatViewState extends State<ChatView> {
             : (data['senderDisplayName'] as String? ?? 'ลูกค้า');
                     final isMe = senderUid == myUid;
                     final text = data['text'] as String? ?? '';
-                    // final imageUrl = data['imageUrl'] as String?;
-                    final isImageLink = (text.startsWith('http://') || text.startsWith('https://')) && (text.endsWith('.jpg') || text.endsWith('.jpeg') || text.endsWith('.png'));
+                    final imageUrl = (data['imageUrl'] as String?)?.trim();
+                    final isImage = imageUrl != null && imageUrl.isNotEmpty;
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
@@ -261,15 +246,15 @@ class _ChatViewState extends State<ChatView> {
                                       ),
                                     ],
                                   ),
-                                  child: isImageLink
+                                  child: isImage
                                       ? GestureDetector(
                                           onTap: () async {
-                                            await launchUrl(Uri.parse(text));
+                                            await launchUrl(Uri.parse(imageUrl));
                                           },
                                           child: ClipRRect(
                                             borderRadius: BorderRadius.circular(13),
                                             child: Image.network(
-                                              text,
+                                              imageUrl,
                                               fit: BoxFit.cover,
                                               errorBuilder: (context, error, stackTrace) => const Text('ดูรูปไม่ได้', style: TextStyle(color: Colors.red, fontSize: 13)),
                                               loadingBuilder: (context, child, loadingProgress) {
@@ -315,8 +300,10 @@ class _ChatViewState extends State<ChatView> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.image, color: kPrimaryColor),
-                  onPressed: _showImageUrlDialog,
+                  icon: _isUploadingImage
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.4, color: kPrimaryColor))
+                      : const Icon(Icons.image, color: kPrimaryColor),
+                  onPressed: _isUploadingImage ? null : _pickAndUploadImage,
                   tooltip: 'แนบรูปภาพ',
                 ),
                 Expanded(

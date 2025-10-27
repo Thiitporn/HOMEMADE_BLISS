@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../../../services/cloudinary_service.dart';
+
 import 'package:flutter/material.dart';
 import '../../../common/in_app_notification.dart';
 import '../../../common/dialog_utils.dart';
@@ -261,17 +265,75 @@ class _OwnerDashboardViewState extends State<OwnerDashboardView> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        decoration: fieldDecoration(
-                          'URL รูปสินค้า',
-                          icon: Icons.image_outlined,
-                          hintText: 'https://example.com/image.jpg',
-                        ),
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
-                                ? 'กรุณาใส่ URL รูปภาพ'
-                                : null,
-                        onSaved: (value) => imageUrl = value?.trim() ?? '',
+                      // Image URL / upload control
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('รูปสินค้า', style: TextStyle(color: Colors.brown.shade700, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          if (imageUrl.isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: 120,
+                                fit: BoxFit.cover,
+                                errorBuilder: (c, e, s) => Container(
+                                  color: Colors.grey.shade200,
+                                  height: 120,
+                                  child: const Center(child: Icon(Icons.broken_image)),
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
+                              width: double.infinity,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.brown.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Center(child: Icon(Icons.image_outlined, size: 40, color: Colors.brown)),
+                            ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  decoration: fieldDecoration('หรือใส่ URL รูป (ถ้ามี)'),
+                                  initialValue: imageUrl,
+                                  onSaved: (value) => imageUrl = value?.trim() ?? '',
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.cloud_upload_outlined),
+                                label: const Text('อัพโหลด'),
+                                onPressed: () async {
+                                  // pick image and upload
+                                  try {
+                                    // lazy import to avoid adding at top-level lines if not used elsewhere
+                                    final picker = ImagePicker();
+                                    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 80);
+                                    if (picked == null) return;
+                                    setModalState(() {
+                                      // indicate uploading by clearing field temporarily
+                                      imageUrl = '';
+                                    });
+                                    final file = File(picked.path);
+                                    final cloud = CloudinaryService();
+                                    final uploadedUrl = await cloud.uploadFile(file);
+                                    setModalState(() => imageUrl = uploadedUrl);
+                                  } catch (e) {
+                                    // ignore: use_build_context_synchronously
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('อัพโหลดล้มเหลว: $e')));
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -848,18 +910,8 @@ class OwnerDashboardTab extends StatelessWidget {
                     double revenue = 0;
                     for (final doc in docs) {
                       final data = doc.data() as Map<String, dynamic>?;
-                      if (data != null &&
-                          data['status'] == 'paid' &&
-                          data['totalPrice'] != null) {
-                        final value = data['totalPrice'];
-                        if (value is int) {
-                          revenue += value.toDouble();
-                        } else if (value is double) {
-                          revenue += value;
-                        } else if (value is String) {
-                          revenue += double.tryParse(value) ?? 0;
-                        }
-                      }
+                      if (data == null || data['status'] != 'paid') continue;
+                      revenue += _extractOrderAmount(data);
                     }
                     final text =
                         revenue > 0 ? '฿${revenue.toStringAsFixed(0)}' : '฿0';
@@ -1010,6 +1062,24 @@ class OwnerDashboardTab extends StatelessWidget {
       default:
         return FirebaseFirestore.instance.collection('products').snapshots();
     }
+  }
+
+  double _extractOrderAmount(Map<String, dynamic> data) {
+    final candidates = [
+      data['finalTotal'],
+      data['totalPrice'],
+      data['total'],
+      data['amount'],
+    ];
+    for (final value in candidates) {
+      if (value == null) continue;
+      if (value is num) return value.toDouble();
+      if (value is String) {
+        final parsed = double.tryParse(value.replaceAll(',', ''));
+        if (parsed != null) return parsed;
+      }
+    }
+    return 0;
   }
 }
 

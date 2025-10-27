@@ -12,6 +12,7 @@ Homemade Bliss คือแอปพลิเคชันไมโครคอ�
 - [Payments Backend (Stripe & PromptPay)](#payments-backend-stripe--promptpay)
 - [Project Structure](#project-structure)
 - [Useful Commands](#useful-commands)
+- [Run on Physical Device](#run-on-physical-device)
 - [Maintenance Checklist](#maintenance-checklist)
 - [Resources](#resources)
 
@@ -176,6 +177,25 @@ homemade_bliss/
 - ตรวจโค้ด format: `flutter format lib test`
 - สร้าง build สำหรับ Android (debug APK): `flutter build apk --debug`
 - สร้าง build สำหรับ iOS (release): `flutter build ios --release`
+
+## Run on Physical Device
+- **Start backend**
+   - `cd C:\Users\mauy1\FlutterApp_\week1\homemade_bliss`
+   - (ครั้งแรกหลัง clone หรือติดตั้ง Node) `npm install`
+   - `node opn_sandbox_backend.js` และเปิดหน้าต่างนี้ค้างไว้ (Allow access เมื่อ Windows firewall ถาม)
+- **เชื่อมต่อโทรศัพท์ Android จริง**
+   - เปิด Developer Options และ USB debugging จากนั้นเสียบสาย USB
+   - ตรวจสอบด้วย `flutter devices` ถ้ามีหลายเครื่องให้ระบุ `-d <deviceId>` ตอนรัน
+- **หา IP เครื่องพัฒนา**
+   - รัน `ipconfig` และจดค่า `IPv4 Address` จากอะแดปเตอร์ Wi-Fi (เช่น `172.20.10.11`)
+   - โทรศัพท์กับคอมต้องอยู่เครือข่ายเดียวกัน จากโทรศัพท์ลองเปิดเบราว์เซอร์เข้า `http://<ip>:3000/stripe-publishable-key` เพื่อตรวจว่า backend เข้าถึงได้
+- **รัน Flutter แอป**
+   - `flutter pub get` (ถ้ายังไม่รันหลังอัปเดต dependencies)
+   - `flutter run --dart-define=STRIPE_BACKEND_URL=http://<ip>:3000`
+   - แทน `<ip>` ด้วยค่าจริง เช่น `flutter run --dart-define=STRIPE_BACKEND_URL=http://172.20.10.11:3000`
+- **ข้อควรทราบ**
+   - ถ้าเปลี่ยนเครือข่ายหรือรีสตาร์ทเครื่อง ให้ทำขั้นตอนนี้ใหม่ทุกครั้ง
+   - หากไม่มีสัญญาณจาก backend แอปจะขึ้นข้อความ “Backend ไม่ตอบสนอง” ให้ตรวจสอบว่าเซิร์ฟเวอร์ Node.js ยังรันอยู่และ firewall อนุญาตการเชื่อมต่อแล้ว
 
 ## Maintenance Checklist
 - [ ] อัปเดต Firebase config ทุกครั้งที่สลับ project หรือเพิ่ม platform ใหม่

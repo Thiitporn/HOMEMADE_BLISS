@@ -14,6 +14,9 @@ class PushNotificationService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Intentionally keep a reference to the auth subscription so we can cancel it
+  // if needed. Analyzer may warn that it's not read; suppress that warning.
+  // ignore: unused_field
   static StreamSubscription<User?>? _authSub;
   static bool _initialized = false;
   static String? _lastSyncedUid;

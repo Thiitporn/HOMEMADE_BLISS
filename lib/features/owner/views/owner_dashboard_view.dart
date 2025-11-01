@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:image_picker/image_picker.dart';
 import '../../../services/cloudinary_service.dart';
 
@@ -600,8 +601,16 @@ class OwnerDashboardTab extends StatelessWidget {
     final Color mediumBrown = const Color(0xFF8D6E63);
     final Color darkBrown = const Color(0xFF4E342E);
 
+    final mq = MediaQuery.of(context);
+    final double _dashboardBottomInset = math.max(mq.viewPadding.bottom, mq.viewInsets.bottom);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 16 + _dashboardBottomInset,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1974,8 +1983,11 @@ class OwnerProfileTab extends StatelessWidget {
     final createdAt = user?.metadata.creationTime;
     final lastSignIn = user?.metadata.lastSignInTime;
 
+    final mq = MediaQuery.of(context);
+    final double _profileBottomInset = math.max(mq.viewPadding.bottom, mq.viewInsets.bottom);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+      padding: EdgeInsets.fromLTRB(16, 18, 16, 28 + _profileBottomInset),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

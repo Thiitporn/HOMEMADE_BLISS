@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 // Global navigatorKey so we can navigate from notification taps

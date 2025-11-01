@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -20,16 +18,6 @@ enum _ReportRange {
   final String label;
 }
 
-enum _TrendGrouping {
-  daily('รายวัน'),
-  weekly('รายสัปดาห์'),
-  monthly('รายเดือน');
-
-  const _TrendGrouping(this.label);
-
-  final String label;
-}
-
 class _ProductSalesData {
   _ProductSalesData({
     required this.id,
@@ -43,18 +31,6 @@ class _ProductSalesData {
   final String name;
   double revenue;
   double quantity;
-}
-
-class _TrendPoint {
-  const _TrendPoint({
-    required this.period,
-    required this.label,
-    required this.revenue,
-  });
-
-  final DateTime period;
-  final String label;
-  final double revenue;
 }
 
 class _PaymentSummary {
@@ -74,7 +50,6 @@ class _PaymentSummary {
 class _SalesReportViewState extends State<SalesReportView> {
   _ReportRange _range = _ReportRange.sevenDays;
   String _selectedStatus = 'all';
-  _TrendGrouping _trendGrouping = _TrendGrouping.daily;
 
   DateTime get _startDate {
     final now = DateTime.now();
@@ -181,65 +156,6 @@ class _SalesReportViewState extends State<SalesReportView> {
       }
     }
     return result;
-  }
-
-  List<_TrendPoint> _buildTrendData(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-    _TrendGrouping grouping,
-  ) {
-    final totals = <DateTime, double>{};
-    for (final doc in docs) {
-      final data = doc.data();
-      final createdRaw = data['createdAt'];
-      DateTime? created;
-      if (createdRaw is Timestamp) {
-        created = createdRaw.toDate();
-      } else if (createdRaw is DateTime) {
-        created = createdRaw;
-      }
-      if (created == null) continue;
-      final key = _groupKey(created, grouping);
-      final revenue = _toDouble(
-        data['finalTotal'] ?? data['total'] ?? data['totalPrice'],
-      );
-      totals.update(key, (value) => value + revenue, ifAbsent: () => revenue);
-    }
-    final entries = totals.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    return entries
-        .map(
-          (entry) => _TrendPoint(
-            period: entry.key,
-            label: _trendLabel(entry.key, grouping),
-            revenue: entry.value,
-          ),
-        )
-        .toList();
-  }
-
-  DateTime _groupKey(DateTime date, _TrendGrouping grouping) {
-    switch (grouping) {
-      case _TrendGrouping.daily:
-        return DateTime(date.year, date.month, date.day);
-      case _TrendGrouping.weekly:
-        final diff = date.weekday - DateTime.monday;
-        final startOfWeek = date.subtract(Duration(days: diff < 0 ? 6 : diff));
-        return DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-      case _TrendGrouping.monthly:
-        return DateTime(date.year, date.month);
-    }
-  }
-
-  String _trendLabel(DateTime date, _TrendGrouping grouping) {
-    switch (grouping) {
-      case _TrendGrouping.daily:
-        return '${date.day}/${date.month}';
-      case _TrendGrouping.weekly:
-        return 'ส. ${date.day}/${date.month}';
-      case _TrendGrouping.monthly:
-        final shortYear = date.year % 100;
-        return '${date.month}/$shortYear';
-    }
   }
 
   bool _isPaidStatus(String status) {
@@ -431,9 +347,6 @@ class _SalesReportViewState extends State<SalesReportView> {
                 }
                 final topProduct = highestProduct;
                 final bottomProduct = lowestProduct;
-
-                final trendPoints =
-                    _buildTrendData(filteredDocs, _trendGrouping);
 
                 final paidOrders = filteredDocs
                     .where((doc) =>
@@ -726,39 +639,6 @@ class _SalesReportViewState extends State<SalesReportView> {
                                   ),
                                 ],
                               ),
-                      ),
-                      _SectionCard(
-                        title: 'แนวโน้มยอดขาย',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: _TrendGrouping.values.map((grouping) {
-                                final selected = grouping == _trendGrouping;
-                                return ChoiceChip(
-                                  label: Text(grouping.label),
-                                  selected: selected,
-                                  onSelected: (_) => setState(() {
-                                    _trendGrouping = grouping;
-                                  }),
-                                  backgroundColor: const Color(0xFFF3EEE9),
-                                  selectedColor: const Color(0xFF6B705C),
-                                  labelStyle:
-                                      theme.textTheme.bodySmall?.copyWith(
-                                    color: selected
-                                        ? Colors.white
-                                        : const Color(0xFF514C47),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
-                            _SalesTrendChart(points: trendPoints),
-                          ],
-                        ),
                       ),
                       _SectionCard(
                         title: 'สถานะการชำระเงิน',
@@ -1332,362 +1212,6 @@ class _ProductBar extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _SalesTrendChart extends StatelessWidget {
-  const _SalesTrendChart({required this.points});
-
-  final List<_TrendPoint> points;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (points.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8F2ED),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text(
-            'ยังไม่มีข้อมูลยอดขายในช่วงนี้',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF7A746D),
-            ),
-          ),
-        ),
-      );
-    }
-
-    final displayPoints = points.length > 12
-        ? points.sublist(points.length - 12)
-        : points;
-    final maxValue = displayPoints.fold<double>(
-      0,
-      (value, point) => math.max(value, point.revenue),
-    );
-
-    if (maxValue <= 0) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8F2ED),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text(
-            'กำลังรอข้อมูลยอดขายเพิ่มเติม',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF7A746D),
-            ),
-          ),
-        ),
-      );
-    }
-
-    final totalRevenue = displayPoints.fold<double>(
-      0,
-      (sum, point) => sum + point.revenue,
-    );
-    final averageRevenue = totalRevenue / displayPoints.length;
-    final firstRevenue = displayPoints.first.revenue;
-    final latestPoint = displayPoints.last;
-    final revenueDelta = latestPoint.revenue - firstRevenue;
-    final revenueTrendPercentage = firstRevenue <= 0
-        ? null
-        : ((revenueDelta / firstRevenue) * 100).clamp(-999, 999);
-    final trendIsPositive = revenueDelta >= 0;
-    final trendColor = trendIsPositive
-        ? const Color(0xFF4A7856)
-        : const Color(0xFFD35D4A);
-
-    List<_TrendPoint> buildAxisPoints() {
-      if (displayPoints.length <= 6) {
-        return displayPoints;
-      }
-      const count = 6;
-      final step = (displayPoints.length - 1) / (count - 1);
-      final result = <_TrendPoint>[];
-      for (var i = 0; i < count; i++) {
-        final index = (i * step).round().clamp(0, displayPoints.length - 1);
-        final candidate = displayPoints[index];
-        if (result.isNotEmpty && result.last.label == candidate.label) {
-          continue;
-        }
-        result.add(candidate);
-      }
-      if (result.length < 2) {
-        result.add(displayPoints.last);
-      }
-      return result;
-    }
-
-    Widget buildStatTile({
-      required String title,
-      required String value,
-      String? caption,
-      Color? accent,
-    }) {
-      final baseColor = accent ?? const Color(0xFF6B705C);
-      final titleColor = Color.lerp(baseColor, Colors.black, 0.45) ?? baseColor;
-      final captionColor = Color.lerp(baseColor, Colors.black, 0.6) ?? baseColor;
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: baseColor.withOpacity(0.12),
-          border: Border.all(color: baseColor.withOpacity(0.18)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: titleColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: const Color(0xFF2F2B28),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            if (caption != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                caption,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: captionColor,
-                ),
-              ),
-            ],
-          ],
-        ),
-      );
-    }
-
-    final axisPoints = buildAxisPoints();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final isTwoColumn = maxWidth >= 360;
-        final tileWidth = isTwoColumn ? (maxWidth - 12) / 2 : maxWidth;
-
-        final statTiles = <Widget>[
-          SizedBox(
-            width: tileWidth,
-            child: buildStatTile(
-              title: 'ยอดขายรวม',
-              value: '฿${totalRevenue.toStringAsFixed(0)}',
-              caption: '${displayPoints.length} ช่วงเวลา',
-              accent: const Color(0xFF6B705C),
-            ),
-          ),
-          SizedBox(
-            width: tileWidth,
-            child: buildStatTile(
-              title: 'เฉลี่ยต่อช่วง',
-              value: '฿${averageRevenue.toStringAsFixed(0)}',
-              caption: 'ล่าสุด ${latestPoint.label}',
-              accent: const Color(0xFFB08968),
-            ),
-          ),
-          SizedBox(
-            width: tileWidth,
-            child: buildStatTile(
-              title: trendIsPositive ? 'แนวโน้มเพิ่มขึ้น' : 'แนวโน้มลดลง',
-              value: '฿${revenueDelta.abs().toStringAsFixed(0)}',
-              caption: revenueTrendPercentage == null
-                  ? null
-                  : '${trendIsPositive ? '+' : '-'}${revenueTrendPercentage.abs().toStringAsFixed(1)}%',
-              accent: trendColor,
-            ),
-          ),
-        ];
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: statTiles,
-            ),
-            const SizedBox(height: 16),
-            AspectRatio(
-              aspectRatio: 2.6,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFFDFBF8), Color(0xFFF7F0E8)],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                  child: CustomPaint(
-                    painter: _SalesTrendPainter(
-                      points: displayPoints,
-                      lineColor: const Color(0xFF6B705C),
-                    ),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 18,
-              child: Row(
-                children: axisPoints.map((point) {
-                  return Expanded(
-                    child: Align(
-                      alignment: Alignment.center,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          point.label,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: const Color(0xFF6D645D),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _SalesTrendPainter extends CustomPainter {
-  const _SalesTrendPainter({
-    required this.points,
-    required this.lineColor,
-  });
-
-  final List<_TrendPoint> points;
-  final Color lineColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.isEmpty) {
-      return;
-    }
-
-    if (points.length == 1) {
-      final y = size.height * 0.6;
-      final paint = Paint()
-        ..color = lineColor
-        ..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-      canvas.drawCircle(Offset(size.width, y), 4, Paint()..color = lineColor);
-      return;
-    }
-
-    final maxRevenue = points.fold<double>(
-      0,
-      (current, point) => math.max(current, point.revenue),
-    );
-    final minRevenue = points.fold<double>(
-      double.infinity,
-      (current, point) => math.min(current, point.revenue),
-    );
-    final range = (maxRevenue - minRevenue).abs() < 0.01
-        ? 1.0
-        : maxRevenue - minRevenue;
-
-    final fillPath = Path();
-    final linePath = Path();
-    final stepX = size.width / (points.length - 1);
-
-    for (var i = 0; i < points.length; i++) {
-      final point = points[i];
-      final x = stepX * i;
-      final normalized = ((point.revenue - minRevenue) / range)
-          .clamp(0.0, 1.0);
-      final y = size.height - (normalized * size.height);
-
-      if (i == 0) {
-        fillPath.moveTo(x, size.height);
-        fillPath.lineTo(x, y);
-        linePath.moveTo(x, y);
-      } else {
-        fillPath.lineTo(x, y);
-        linePath.lineTo(x, y);
-      }
-    }
-
-    fillPath.lineTo(size.width, size.height);
-    fillPath.close();
-
-    final fillPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [
-          lineColor.withOpacity(0.26),
-          lineColor.withOpacity(0.05),
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    canvas.drawPath(fillPath, fillPaint);
-
-    final gridPaint = Paint()
-      ..color = const Color(0xFFE3DBCF)
-      ..strokeWidth = 1;
-    const gridLines = 3;
-    for (var i = 1; i <= gridLines; i++) {
-      final dy = size.height * (i / (gridLines + 1));
-      canvas.drawLine(Offset(0, dy), Offset(size.width, dy), gridPaint);
-    }
-
-    final linePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawPath(linePath, linePaint);
-
-    final latestPoint = points.last;
-    final latestIndex = points.length - 1;
-    final latestX = stepX * latestIndex;
-    final latestNormalized = ((latestPoint.revenue - minRevenue) / range)
-        .clamp(0.0, 1.0);
-    final latestY = size.height - (latestNormalized * size.height);
-
-    final dotPaint = Paint()..color = lineColor;
-    canvas.drawCircle(Offset(latestX, latestY), 4, dotPaint);
-    canvas.drawCircle(
-      Offset(latestX, latestY),
-      8,
-      Paint()..color = lineColor.withOpacity(0.18),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SalesTrendPainter oldDelegate) {
-    return true;
   }
 }
 

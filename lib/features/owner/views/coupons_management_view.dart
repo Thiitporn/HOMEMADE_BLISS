@@ -59,7 +59,7 @@ class _CouponsManagementViewState extends State<CouponsManagementView> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: discountType,
+                        initialValue: discountType,
                         decoration: const InputDecoration(labelText: 'ประเภทส่วนลด'),
                         items: const [
                           DropdownMenuItem(value: 'percentage', child: Text('เปอร์เซ็นต์ (%)')),

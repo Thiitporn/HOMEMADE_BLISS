@@ -353,7 +353,7 @@ class _OwnerDashboardViewState extends State<OwnerDashboardView> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: selectedCategory,
+                              initialValue: selectedCategory,
                               decoration: fieldDecoration('หมวดหมู่',
                                   icon: Icons.category_outlined),
                               items: categories
@@ -1330,7 +1330,7 @@ class OwnerProductsTab extends StatelessWidget {
                                                         child:
                                                             DropdownButtonFormField<
                                                                 String>(
-                                                          value: editCategory,
+                                                          initialValue: editCategory,
                                                           decoration:
                                                               const InputDecoration(
                                                                   labelText:

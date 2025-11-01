@@ -6,7 +6,6 @@ import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import '../../../common/stripe_config.dart';
 import '../../../common/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';

@@ -16,8 +16,8 @@ class TCheckboxTheme {
     ),
 
     // สีของ "เครื่องหมายถูก" (check mark)
-    checkColor: MaterialStateProperty.resolveWith((states) {
-      if (states.contains(MaterialState.selected)) {
+    checkColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.selected)) {
         // ถ้า checkbox ถูกเลือก → เครื่องหมายถูกเป็นสีขาว
         return Colors.white;
       } else {
@@ -27,8 +27,8 @@ class TCheckboxTheme {
     }),
 
     // สีพื้นหลังของกล่อง checkbox
-    fillColor: MaterialStateProperty.resolveWith((states) {
-      if (states.contains(MaterialState.selected)) {
+    fillColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.selected)) {
         // ถ้าถูกเลือก → กล่องพื้นหลังสีน้ำเงิน
         return Colors.blue;
       } else {
@@ -46,8 +46,8 @@ class TCheckboxTheme {
       borderRadius: BorderRadius.circular(4),
     ),
 
-    checkColor: MaterialStateProperty.resolveWith((states) {
-      if (states.contains(MaterialState.selected)) {
+    checkColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.selected)) {
         // ถ้าถูกเลือก → เครื่องหมายถูกเป็นสีขาว
         return Colors.white;
       } else {
@@ -56,8 +56,8 @@ class TCheckboxTheme {
       }
     }),
 
-    fillColor: MaterialStateProperty.resolveWith((states) {
-      if (states.contains(MaterialState.selected)) {
+    fillColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.selected)) {
         // ถ้าถูกเลือก → กล่อง checkbox เป็นสีน้ำเงิน
         return Colors.blue;
       } else {

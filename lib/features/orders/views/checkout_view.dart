@@ -235,7 +235,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                 _loadingCoupons
                     ? const Center(child: CircularProgressIndicator())
                     : DropdownButtonFormField<String?>(
-                        value: _selectedCoupon,
+                        initialValue: _selectedCoupon,
                         isExpanded: true,
                         decoration: _buildInputDecoration('เลือกคูปองส่วนลด', Icons.local_offer),
                         items: <DropdownMenuItem<String?>>[

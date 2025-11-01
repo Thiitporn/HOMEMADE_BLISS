@@ -41,11 +41,9 @@ class TAppTheme {
       colorScheme: ColorScheme.light(
         primary: kPrimaryColor,
         secondary: kSecondaryColor,
-        background: kBackgroundColor,
         surface: Colors.white,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
-        onBackground: kDarkColor,
         onSurface: kDarkColor,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -86,11 +84,9 @@ class TAppTheme {
       colorScheme: ColorScheme.dark(
         primary: kDarkColor,
         secondary: kSecondaryColor,
-        background: kDarkColor,
         surface: kPrimaryColor,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
-        onBackground: kBackgroundColor,
         onSurface: kBackgroundColor,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

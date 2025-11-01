@@ -1,0 +1,11 @@
+{
+  "stripe": {
+    "publishable_key": "pk_test_51SI8SqH0YKCnZGn55sDwlKMz1XWL9zxKUQA30Pqg5gz218neg5hm0JQWCN8xPQ7AxXjNVPp81TQCtf0JvFaoIaEQ00wWp8DEP2",
+    "secret_key": "sk_test_51SI8SqH0YKCnZGn5MEPubpd2ziRiYlPyMOVgrxnR5qxfJVG2i3WqyMlroVdKSv7zu9Po9kMARY93Ga8Lh3AEPtt300n4uhk1nw"
+  },
+  "cloudinary": {
+    "cloud_name": "dcxltgxlw",
+    "api_secret": "RKdZPo6DYm5Jz4W4QbMrKToWdPw",
+    "api_key": "977985198873474"
+  }
+}

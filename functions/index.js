@@ -2,108 +2,95 @@ const cors = require("cors");
 const express = require("express");
 const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
-const functions = require("firebase-functions");
 const fs = require("fs");
 const path = require("path");
 
-// Load Firebase runtime config with local environment fallback.
-let config = {stripe: {}, cloudinary: {}};
-try {
-  const runtimeConfig = functions.config();
-  if (runtimeConfig && Object.keys(runtimeConfig).length > 0) {
-    config = runtimeConfig;
-  }
-} catch (error) {
-  logger.warn(
-      "functions.config() unavailable; attempting local config fallback.",
-      {error: error.message},
-  );
-}
+const stripeFactory = require("stripe");
+const cloudinaryLib = require("cloudinary").v2;
 
-try {
-  const localPath = path.join(__dirname, "..", ".runtimeconfig.json");
-  if (fs.existsSync(localPath)) {
-    const localConfig = JSON.parse(fs.readFileSync(localPath, "utf8"));
-    config = {
-      ...config,
-      ...localConfig,
-      stripe: {
-        ...(config.stripe || {}),
-        ...(localConfig.stripe || {}),
-      },
-      cloudinary: {
-        ...(config.cloudinary || {}),
-        ...(localConfig.cloudinary || {}),
-      },
-    };
+const readLocalRuntimeConfig = () => {
+  try {
+    const localPath = path.join(__dirname, "..", ".runtimeconfig.json");
+    if (fs.existsSync(localPath)) {
+      return JSON.parse(fs.readFileSync(localPath, "utf8"));
+    }
+  } catch (error) {
+    logger.info(
+        "Local .runtimeconfig.json could not be loaded.",
+        {error: error.message},
+    );
   }
-} catch (error) {
-  logger.info(
-      "Local .runtimeconfig.json could not be loaded.",
-      {error: error.message},
-  );
-}
-
-const getConfig = (group, key, envKey) => {
-  if (Object.prototype.hasOwnProperty.call(process.env, envKey)) {
-    return process.env[envKey];
-  }
-  if (
-    config[group] &&
-    Object.prototype.hasOwnProperty.call(config[group], key)
-  ) {
-    return config[group][key];
-  }
-  return undefined;
+  return {stripe: {}, cloudinary: {}};
 };
 
-const STRIPE_SECRET_KEY = getConfig(
-    "stripe",
-    "secret_key",
-    "STRIPE_SECRET_KEY",
-);
-const STRIPE_PUBLISHABLE_KEY = getConfig(
-    "stripe",
-    "publishable_key",
-    "STRIPE_PUBLISHABLE_KEY",
-);
-const STRIPE_WEBHOOK_SECRET = getConfig(
-    "stripe",
-    "webhook_secret",
-    "STRIPE_WEBHOOK_SECRET",
-);
+const localRuntimeConfig = readLocalRuntimeConfig();
+const localStripeConfig = localRuntimeConfig.stripe || {};
+const localCloudinaryConfig = localRuntimeConfig.cloudinary || {};
 
-const CLOUDINARY_CLOUD_NAME = getConfig(
-    "cloudinary",
-    "cloud_name",
-    "CLOUDINARY_CLOUD_NAME",
-);
-const CLOUDINARY_API_KEY = getConfig(
-    "cloudinary",
-    "api_key",
-    "CLOUDINARY_API_KEY",
-);
-const CLOUDINARY_API_SECRET = getConfig(
-    "cloudinary",
-    "api_secret",
-    "CLOUDINARY_API_SECRET",
-);
+let cachedConfig;
+let loggedConfigSummary = false;
+let warnedCloudinary = false;
 
-if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-  logger.warn(
-      "Cloudinary config incomplete; uploads will fail until configured.",
-  );
-}
-const stripe = STRIPE_SECRET_KEY ? require("stripe")(STRIPE_SECRET_KEY) : null;
+const loadRuntimeConfig = () => {
+  if (cachedConfig) {
+    return cachedConfig;
+  }
 
-const cloudinary = require("cloudinary").v2;
-if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
-  cloudinary.config({
-    cloud_name: CLOUDINARY_CLOUD_NAME,
-    api_key: CLOUDINARY_API_KEY,
-    api_secret: CLOUDINARY_API_SECRET,
-  });
-}
+  const stripeSecretKey =
+    process.env.STRIPE_SECRET_KEY || localStripeConfig.secret_key;
+  const stripePublishableKey =
+    process.env.STRIPE_PUBLISHABLE_KEY || localStripeConfig.publishable_key;
+  const stripeWebhookSecret =
+    process.env.STRIPE_WEBHOOK_SECRET || localStripeConfig.webhook_secret;
+
+  const cloudinaryCloudName =
+    process.env.CLOUDINARY_CLOUD_NAME || localCloudinaryConfig.cloud_name;
+  const cloudinaryApiKey =
+    process.env.CLOUDINARY_API_KEY || localCloudinaryConfig.api_key;
+  const cloudinaryApiSecret =
+    process.env.CLOUDINARY_API_SECRET || localCloudinaryConfig.api_secret;
+
+  const stripe = stripeSecretKey ? stripeFactory(stripeSecretKey) : null;
+  const cloudinary = cloudinaryLib;
+
+  if (cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret) {
+    cloudinary.config({
+      cloud_name: cloudinaryCloudName,
+      api_key: cloudinaryApiKey,
+      api_secret: cloudinaryApiSecret,
+    });
+  } else if (!warnedCloudinary) {
+    warnedCloudinary = true;
+    logger.warn(
+        "Cloudinary config incomplete; uploads will fail until configured.",
+    );
+  }
+
+  if (!loggedConfigSummary) {
+    loggedConfigSummary = true;
+    logger.info("Runtime config summary", {
+      hasStripeSecret: Boolean(stripeSecretKey),
+      hasStripePublishable: Boolean(stripePublishableKey),
+      hasStripeWebhook: Boolean(stripeWebhookSecret),
+      hasCloudinaryName: Boolean(cloudinaryCloudName),
+      hasCloudinaryKey: Boolean(cloudinaryApiKey),
+      hasCloudinarySecret: Boolean(cloudinaryApiSecret),
+    });
+  }
+
+  cachedConfig = {
+    stripe,
+    stripeSecretKey,
+    stripePublishableKey,
+    stripeWebhookSecret,
+    cloudinary,
+    cloudinaryCloudName,
+    cloudinaryApiKey,
+    cloudinaryApiSecret,
+  };
+
+  return cachedConfig;
+};
 
 const app = express();
 app.use(cors({origin: true}));
@@ -117,14 +104,16 @@ app.use((req, res, next) => {
 });
 
 app.get("/stripe-publishable-key", (_req, res) => {
-  if (!STRIPE_PUBLISHABLE_KEY) {
+  const {stripePublishableKey} = loadRuntimeConfig();
+  if (!stripePublishableKey) {
     return res.status(503).json({error: "Stripe publishable key missing"});
   }
-  res.json({publishableKey: STRIPE_PUBLISHABLE_KEY});
+  res.json({publishableKey: stripePublishableKey});
 });
 
 app.post("/create-stripe-payment-intent", async (req, res) => {
   try {
+    const {stripe} = loadRuntimeConfig();
     if (!stripe) {
       logger.error("Stripe secret key missing when creating PaymentIntent");
       return res.status(503).json({error: "Stripe is not configured"});
@@ -160,11 +149,13 @@ app.post("/create-stripe-payment-intent", async (req, res) => {
 
 app.post("/upload-image", async (req, res) => {
   try {
-    if (
-      !CLOUDINARY_CLOUD_NAME ||
-      !CLOUDINARY_API_KEY ||
-      !CLOUDINARY_API_SECRET
-    ) {
+    const {
+      cloudinary,
+      cloudinaryCloudName,
+      cloudinaryApiKey,
+      cloudinaryApiSecret,
+    } = loadRuntimeConfig();
+    if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
       return res.status(503).json({error: "Cloudinary is not configured"});
     }
 
@@ -197,7 +188,8 @@ app.post(
     "/stripe-webhook",
     express.raw({type: "application/json"}),
     (req, res) => {
-      if (!stripe || !STRIPE_WEBHOOK_SECRET) {
+      const {stripe, stripeWebhookSecret} = loadRuntimeConfig();
+      if (!stripe || !stripeWebhookSecret) {
         logger.error("Stripe webhook called without required configuration");
         return res.status(503).send("Webhook not configured");
       }
@@ -207,7 +199,7 @@ app.post(
         const event = stripe.webhooks.constructEvent(
             req.body,
             signature,
-            STRIPE_WEBHOOK_SECRET,
+            stripeWebhookSecret,
         );
         logger.info("Stripe webhook received", {type: event.type});
         return res.status(200).send("ok");
@@ -221,5 +213,19 @@ app.post(
     },
 );
 
-exports.api = onRequest({region: "asia-southeast1"}, app);
+exports.api = onRequest(
+    {
+      region: "asia-southeast1",
+      invoker: "public",
+      secrets: [
+        "STRIPE_SECRET_KEY",
+        "STRIPE_PUBLISHABLE_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "CLOUDINARY_CLOUD_NAME",
+        "CLOUDINARY_API_KEY",
+        "CLOUDINARY_API_SECRET",
+      ],
+    },
+    app,
+);
 

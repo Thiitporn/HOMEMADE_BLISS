@@ -35,6 +35,7 @@ migrate_working_dir/
 .pub/
 /build/
 node_modules/
+.secret/
 
 # Symbolication related
 app.*.symbols

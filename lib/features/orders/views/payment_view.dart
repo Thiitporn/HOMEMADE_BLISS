@@ -461,11 +461,14 @@ class _PaymentViewState extends State<PaymentView> {
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(payload),
             )
-            .timeout(const Duration(seconds: 3));
+            .timeout(
+              const Duration(seconds: 12),
+            );
         if (response.statusCode == 200) {
           print('PaymentIntent created via $baseUrl');
           return response;
         }
+        debugPrint('HTTP ${response.statusCode} from $baseUrl: ${response.body}');
         lastError = Exception('HTTP ${response.statusCode}: ${response.body}');
       } on TimeoutException catch (e) {
         debugPrint('Timeout calling $baseUrl: $e');

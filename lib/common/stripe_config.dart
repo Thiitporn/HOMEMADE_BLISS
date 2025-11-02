@@ -7,7 +7,7 @@ import 'backend_config.dart';
 class StripeConfig {
   static String? _key;
   // local fallback (must match the same Stripe account as backend)
-  static const _fallbackKey = 'pk_test_51SI8SqH0YKCnZGn55sDwlKMz1XWL9zxKUQA30Pqg5gz218neg5hm0JQWCN8xPQ7AxXjNVPp81TQCtf0JvFaoIaEQ00wWp8DEP2';
+  static const _fallbackKey = 'pk_test_51SOp0j6Ay6pphfhf2ATAltVjKNOVKI4BGWSHBZ2toFv6aOIikNdHQJ4hbnfwScUbJ7GQ8eR2AX3RdNj33wHFX7X500YExsCkso';
 
   static Future<void> ensureInitialized() async {
     if (_key != null && _key!.isNotEmpty) return;

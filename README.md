@@ -14,6 +14,7 @@ Homemade Bliss คือแอปพลิเคชันไมโครคอ�
 - [Useful Commands](#useful-commands)
 - [Run on Physical Device](#run-on-physical-device)
 - [Maintenance Checklist](#maintenance-checklist)
+- [Stripe Cloud Functions Workflow](#stripe-cloud-functions-workflow)
 - [Resources](#resources)
 
 ## Overview
@@ -196,6 +197,20 @@ homemade_bliss/
 - **ข้อควรทราบ**
    - ถ้าเปลี่ยนเครือข่ายหรือรีสตาร์ทเครื่อง ให้ทำขั้นตอนนี้ใหม่ทุกครั้ง
    - หากไม่มีสัญญาณจาก backend แอปจะขึ้นข้อความ “Backend ไม่ตอบสนอง” ให้ตรวจสอบว่าเซิร์ฟเวอร์ Node.js ยังรันอยู่และ firewall อนุญาตการเชื่อมต่อแล้ว
+
+   ## Stripe Cloud Functions Workflow
+   - **กำหนดค่า secret**
+      - ใช้คีย์จาก Stripe Dashboard (test mode) รัน `firebase functions:secrets:set STRIPE_SECRET_KEY` และ `firebase functions:secrets:set STRIPE_PUBLISHABLE_KEY` แล้ววาง `sk_test_...` และ `pk_test_...`
+      - กำหนด `STRIPE_WEBHOOK_SECRET` ด้วยค่า `whsec_...` ที่ได้จาก `stripe listen --forward-to https://api-uycndad22a-as.a.run.app/stripe-webhook`
+   - **Deploy ให้บริการ**
+      - `firebase deploy --only functions:api`
+      - ตรวจสอบด้วย `curl https://api-uycndad22a-as.a.run.app/stripe-publishable-key` ต้องตอบกลับ JSON ที่มีคีย์ทดสอบล่าสุด
+   - **ทดสอบปลายทาง**
+      - เปิดสองเทอร์มินัล: (A) `stripe listen --forward-to https://api-uycndad22a-as.a.run.app/stripe-webhook` (B) `stripe trigger payment_intent.succeeded`
+      - ดู log ผ่าน `firebase functions:log --only api` ต้องเห็น `Stripe webhook received`
+   - **รันแอปกับ backend นี้**
+      - `flutter run -d <deviceId> --dart-define=BACKEND_BASE_URL=https://api-uycndad22a-as.a.run.app`
+      - แอปจะเรียก endpoint เดียวกันทั้งการสร้าง PaymentIntent และดึง publishable key; ใช้ SSL อยู่แล้วสามารถถอดสายหลังติดตั้งเสร็จ
 
 ## Maintenance Checklist
 - [ ] อัปเดต Firebase config ทุกครั้งที่สลับ project หรือเพิ่ม platform ใหม่

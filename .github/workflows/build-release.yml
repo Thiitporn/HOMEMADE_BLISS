@@ -28,16 +28,13 @@ jobs:
           fi
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/myapp-release.keystore
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          # Pin to the project's local stable Flutter version (has Dart >= 3.6)
-          flutter-version: '3.35.6'
-          # disable cache to avoid restoring an older Flutter that doesn't match the pin
-          cache: false
-
-      - name: Show Flutter version
-        run: flutter --version
+      - name: Install Flutter (manual)
+        run: |
+          # Clone the exact stable tag so CI uses the same Flutter/Dart as local
+          git clone --depth 1 --branch 3.35.6 https://github.com/flutter/flutter.git $HOME/flutter
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+          # verify
+          flutter --version
 
       - name: Get dependencies
         run: flutter pub get

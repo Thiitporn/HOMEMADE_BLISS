@@ -32,7 +32,11 @@ jobs:
         run: |
           # Clone the exact stable tag so CI uses the same Flutter/Dart as local
           git clone --depth 1 --branch 3.35.6 https://github.com/flutter/flutter.git $HOME/flutter
+          # Add to future steps PATH
           echo "$HOME/flutter/bin" >> $GITHUB_PATH
+          # Also export into current shell so we can run flutter immediately in this step
+          export PATH="$HOME/flutter/bin:$PATH"
+          PATH="$HOME/flutter/bin:$PATH"
           # verify
           flutter --version
 

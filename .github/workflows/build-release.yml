@@ -33,7 +33,11 @@ jobs:
         with:
           # Pin to the project's local stable Flutter version (has Dart >= 3.6)
           flutter-version: '3.35.6'
-          cache: true
+          # disable cache to avoid restoring an older Flutter that doesn't match the pin
+          cache: false
+
+      - name: Show Flutter version
+        run: flutter --version
 
       - name: Get dependencies
         run: flutter pub get

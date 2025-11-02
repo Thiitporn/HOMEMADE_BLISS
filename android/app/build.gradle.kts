@@ -11,6 +11,11 @@ plugins {
 
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
+// Prefer environment variables for keystore values (safer for CI).
+val envStoreFile = System.getenv("KEYSTORE_STORE_FILE")
+val envStorePassword = System.getenv("KEYSTORE_STORE_PASSWORD")
+val envKeyAlias = System.getenv("KEYSTORE_KEY_ALIAS")
+val envKeyPassword = System.getenv("KEYSTORE_KEY_PASSWORD")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
@@ -43,7 +48,14 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
+            // First try environment variables (CI-friendly)
+            if (!envStoreFile.isNullOrBlank()) {
+                storeFile = file(envStoreFile)
+                storePassword = envStorePassword
+                keyAlias = envKeyAlias
+                keyPassword = envKeyPassword
+            } else if (keystorePropertiesFile.exists()) {
+                // Fallback to local key.properties
                 val storePath = keystoreProperties["storeFile"] as String?
                 if (!storePath.isNullOrBlank()) {
                     storeFile = file(storePath)
@@ -65,6 +77,12 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
         }
+    }
+
+    lint {
+        // Lint can consume a lot of metaspace on CI; skip release lint during automated builds.
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     dependencies {

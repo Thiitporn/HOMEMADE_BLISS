@@ -3,6 +3,8 @@ name: Build Release
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
@@ -12,11 +14,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
 
       - name: Restore keystore from secret
         env:
@@ -26,17 +28,18 @@ jobs:
             echo "Missing KEYSTORE_BASE64 secret";
             exit 1;
           fi
+          mkdir -p android/app
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/myapp-release.keystore
 
-      - name: Install Flutter (manual)
-        run: |
-          # Clone the exact stable tag so CI uses the same Flutter/Dart as local
-          git clone --depth 1 --branch 3.35.6 https://github.com/flutter/flutter.git $HOME/flutter
-          # Add to PATH for subsequent steps (runner reloads environment between steps)
-          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.6'
 
       - name: Verify Flutter install
-        run: flutter --version
+        run: |
+          flutter --version
+          flutter doctor -v
 
       - name: Get dependencies
         run: flutter pub get

@@ -3,7 +3,13 @@ name: Build Release
 
 on:
   push:
+    # run on main and on this feature branch so a push here will trigger CI
+    branches: [ main, fix/jdk-17 ]
+  pull_request:
+    # run when a PR targets main
     branches: [ main ]
+  # allow manual runs from the Actions UI
+  workflow_dispatch:
 
 jobs:
   build:

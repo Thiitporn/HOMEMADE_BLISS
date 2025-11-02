@@ -31,8 +31,8 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          # Pin to a known stable release to avoid transient "unable to determine" errors
-          flutter-version: '3.10.6'
+          # Pin to the project's local stable Flutter version (has Dart >= 3.6)
+          flutter-version: '3.35.6'
           cache: true
 
       - name: Get dependencies

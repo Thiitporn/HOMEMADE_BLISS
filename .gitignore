@@ -50,3 +50,4 @@ app.*.map.json
 
 # Prevent accidental commit of filter-repo replacements (may contain secrets)
 .git-filter-repo-replacements.txt
+*.hprof

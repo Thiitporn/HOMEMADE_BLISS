@@ -6,30 +6,41 @@ import 'backend_config.dart';
 
 class StripeConfig {
   static String? _key;
-  // local fallback (must match the same Stripe account as backend)
-  static const _fallbackKey = 'pk_test_51SOp0j6Ay6pphfhf2ATAltVjKNOVKI4BGWSHBZ2toFv6aOIikNdHQJ4hbnfwScUbJ7GQ8eR2AX3RdNj33wHFX7X500YExsCkso';
+  static const _envPublishableKey = String.fromEnvironment(
+    'STRIPE_PUBLISHABLE_KEY',
+    defaultValue: '',
+  );
 
   static Future<void> ensureInitialized() async {
     if (_key != null && _key!.isNotEmpty) return;
-    for (final origin in _backendOrigins()) {
-      try {
-        final res = await http
-            .get(Uri.parse('$origin/stripe-publishable-key'))
-            .timeout(const Duration(seconds: 3));
-        if (res.statusCode == 200) {
-          final json = jsonDecode(res.body) as Map<String, dynamic>;
-          final key = (json['publishableKey'] as String?)?.trim();
-          if (key != null && key.isNotEmpty) {
-            BackendConfig.cacheWorkingOrigin(origin);
-            _key = key;
-            break;
+    if (_envPublishableKey.isNotEmpty) {
+      _key = _envPublishableKey;
+    }
+    if (_key == null) {
+      for (final origin in _backendOrigins()) {
+        try {
+          final res = await http
+              .get(Uri.parse('$origin/stripe-publishable-key'))
+              .timeout(const Duration(seconds: 3));
+          if (res.statusCode == 200) {
+            final json = jsonDecode(res.body) as Map<String, dynamic>;
+            final key = (json['publishableKey'] as String?)?.trim();
+            if (key != null && key.isNotEmpty) {
+              BackendConfig.cacheWorkingOrigin(origin);
+              _key = key;
+              break;
+            }
           }
+        } catch (_) {
+          // ignore and try next origin
         }
-      } catch (_) {
-        // ignore and try next origin
       }
     }
-    _key ??= _fallbackKey;
+    if (_key == null || _key!.isEmpty) {
+      throw StateError(
+        'Stripe publishable key ไม่ถูกตั้งค่า: โปรดกำหนด STRIPE_PUBLISHABLE_KEY หรือให้ backend คืนค่า /stripe-publishable-key.',
+      );
+    }
     Stripe.publishableKey = _key!;
     await Stripe.instance.applySettings();
   }

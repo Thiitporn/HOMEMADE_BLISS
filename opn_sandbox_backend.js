@@ -16,6 +16,15 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY;
 const stripe = Stripe(STRIPE_SECRET_KEY);
 
+if (!STRIPE_SECRET_KEY || !STRIPE_SECRET_KEY.startsWith('sk_')) {
+  console.warn('[Stripe] STRIPE_SECRET_KEY missing or not a secret key (should start with sk_)');
+}
+if (!STRIPE_PUBLISHABLE_KEY || !STRIPE_PUBLISHABLE_KEY.startsWith('pk_')) {
+  console.warn('[Stripe] STRIPE_PUBLISHABLE_KEY missing or not a publishable key (should start with pk_)');
+}
+console.log('[Stripe] Using secret key prefix:', STRIPE_SECRET_KEY ? STRIPE_SECRET_KEY.slice(0, 7) : 'undefined');
+console.log('[Stripe] Using publishable key prefix:', STRIPE_PUBLISHABLE_KEY ? STRIPE_PUBLISHABLE_KEY.slice(0, 7) : 'undefined');
+
 // Cloudinary setup
 const cloudinary = require('cloudinary').v2;
 cloudinary.config({

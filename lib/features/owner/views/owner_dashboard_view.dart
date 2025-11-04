@@ -38,7 +38,7 @@ class _OwnerDashboardViewState extends State<OwnerDashboardView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF3EF),
+      backgroundColor: const Color.fromARGB(255, 255, 0, 0),
       appBar: AppBar(
         backgroundColor: const Color(0xFFFAF3EF),
         elevation: 0,
@@ -707,7 +707,7 @@ class OwnerDashboardTab extends StatelessWidget {
                   title: 'คูปองส่วนลด',
                   type: 'coupons',
                   icon: Icons.discount,
-                  color: Colors.purple,
+                  color: Colors.brown,
                 ),
                 _buildStatCard(
                   context,

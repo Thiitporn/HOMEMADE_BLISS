@@ -33,20 +33,72 @@ class _CheckoutViewState extends State<CheckoutView> {
   }
 
   void _applyCoupon(String? code) {
+    if (code == null) {
+      setState(() {
+        _discount = 0;
+        _selectedCoupon = null;
+      });
+      return;
+    }
+
     final coupon = _availableCoupons.firstWhere(
       (c) => c['code'] == code,
       orElse: () => {},
     );
-    setState(() {
-      if (coupon.isNotEmpty && code != null) {
-        if (coupon['discountType'] == 'percentage') {
-          _discount = (coupon['discountValue'] ?? 0) / 100 * widget.totalPrice;
-        } else {
-          _discount = (coupon['discountValue'] ?? 0).toDouble();
-        }
-      } else {
+
+    if (coupon.isEmpty) {
+      setState(() {
         _discount = 0;
+        _selectedCoupon = null;
+      });
+      return;
+    }
+
+    String? errorMessage;
+    final orderTotal = widget.totalPrice;
+    final minOrderAmount = (coupon['minOrderAmount'] ?? 0).toDouble();
+    if (orderTotal < minOrderAmount) {
+      errorMessage = 'ยอดสั่งซื้อขั้นต่ำสำหรับคูปองนี้คือ ฿${minOrderAmount.toStringAsFixed(2)}';
+    }
+
+    if (errorMessage == null) {
+      final expiry = coupon['expiryDate'];
+      if (expiry is Timestamp && expiry.toDate().isBefore(DateTime.now())) {
+        errorMessage = 'คูปองนี้หมดอายุแล้ว';
       }
+    }
+
+    if (errorMessage == null) {
+      final usageLimit = (coupon['usageLimit'] ?? 0) as num;
+      final usedCount = (coupon['usedCount'] ?? 0) as num;
+      if (usageLimit > 0 && usedCount >= usageLimit) {
+        errorMessage = 'คูปองนี้ครบโควต้าแล้ว';
+      }
+    }
+
+    if (errorMessage != null) {
+      setState(() {
+        _discount = 0;
+        _selectedCoupon = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage!)),
+      );
+      return;
+    }
+
+    final discountType = (coupon['discountType'] ?? 'percentage') as String;
+    final rawDiscountValue = (coupon['discountValue'] ?? 0).toDouble();
+    double calculatedDiscount;
+    if (discountType == 'percentage') {
+      calculatedDiscount = orderTotal * (rawDiscountValue / 100);
+    } else {
+      calculatedDiscount = rawDiscountValue;
+    }
+    calculatedDiscount = calculatedDiscount.clamp(0, orderTotal);
+
+    setState(() {
+      _discount = calculatedDiscount;
       _selectedCoupon = code;
     });
   }

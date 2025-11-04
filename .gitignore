@@ -24,6 +24,12 @@ node_modules/
 *.apk
 *.aab
 
+# Secrets / credentials
+.env
+.secret/
+*.keystore.bak
+*keystore.b64.txt
+
 # IDE
 .idea/
 .vscode/

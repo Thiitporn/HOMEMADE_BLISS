@@ -1,0 +1,12 @@
+# key.properties.template — example local key.properties for development
+# Copy this file to key.properties (which is gitignored) and fill real values
+# OR export the following environment variables in your CI / local shell:
+#   KEYSTORE_STORE_FILE, KEYSTORE_STORE_PASSWORD, KEYSTORE_KEY_ALIAS, KEYSTORE_KEY_PASSWORD
+
+# Example local values (uncomment and set accordingly):
+# storeFile=../android/myapp-release.keystore
+# storePassword=ChangeThisToYourStorePassword
+# keyAlias=myapp
+# keyPassword=ChangeThisToYourKeyPassword
+
+# If using environment variables, you don't need this file at all.
